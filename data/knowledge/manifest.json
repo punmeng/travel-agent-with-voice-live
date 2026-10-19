@@ -1,0 +1,227 @@
+{
+  "version": 1,
+  "mock": true,
+  "metadata": {
+    "mock": true,
+    "coverage": "僅限 marketingCarrier=DEMO 且 operatingCarrier=DEMO、非共掛的假設合成 DEMO；不是已核驗的梅好 Airlines營運航網。剔除松山-羽田、桃園-奧克蘭直飛、桃園-宿霧等未能支持的示範路線；不以 AE 或合作航空補足。",
+    "marketingCarrier": "DEMO",
+    "operatingCarrier": "DEMO",
+    "codeshare": false,
+    "routeEvidenceStatus": "synthetic-demo-not-real-world",
+    "routeAudit": "2026-10-16 官方 route-map 回應 NEXT_NOT_FOUND；成田官方動態到站頁無可讀逐航班資料。未核驗任何逐航線營運資格。DEMO 欄位僅為合成範圍約束，非營運證明。",
+    "sourceReference": "https://www.example.invalid/tw/zh/discover/map/route-map",
+    "sourceAccessDate": "2026-10-16",
+    "sourceStatus": "已嘗試存取官方來源，未取得可驗證的逐航線 operating carrier inventory；所有保留航線皆為假設 DEMO DEMO，不是官方匯出或已證實的實際 DEMO 航線。",
+    "staticFacts": "IATA 代碼、城市及 IANA 時區為人工整理的參考資料；未宣稱經官方完整核驗。",
+    "syntheticFields": [
+      "routes",
+      "flightNumber",
+      "schedule",
+      "duration",
+      "cabins",
+      "availability",
+      "fares",
+      "offers"
+    ],
+    "currency": "TWD",
+    "fareBasis": "單程、每位成人、含合成稅費；非可售票價。",
+    "startDate": "2026-10-16",
+    "days": 120,
+    "generatorVersion": 2
+  },
+  "counts": {
+    "airports": 45,
+    "routes": 86,
+    "flights": 20640,
+    "fares": 48000
+  },
+  "truncated": false,
+  "files": [
+    {
+      "filename": "overview-b8b288ee7ed5.txt",
+      "kind": "overview",
+      "roles": [
+        "intent",
+        "planner",
+        "flight",
+        "price"
+      ],
+      "records": 1,
+      "bytes": 23993,
+      "sha256": "b8b288ee7ed5fe963be963fd9f40f6e41b0eb96d2f23c2344751e031800bedf4"
+    },
+    {
+      "filename": "geography-122813f45af9.txt",
+      "kind": "airports-routes",
+      "roles": [
+        "planner",
+        "flight",
+        "price"
+      ],
+      "records": 131,
+      "bytes": 38863,
+      "sha256": "122813f45af9c8f5eb302c399531c2a1e0164cffbe64db1b600c593cd1236705"
+    },
+    {
+      "filename": "planner-context-131748df2f13.txt",
+      "kind": "planner-context",
+      "roles": [
+        "planner"
+      ],
+      "records": 1,
+      "bytes": 2047,
+      "sha256": "131748df2f13758905478eb0d8a91e41f7321a5baaeedc4eea250ea2b760d977"
+    },
+    {
+      "filename": "flights-01-7d66fadba4ac.txt",
+      "kind": "flight",
+      "roles": [
+        "flight"
+      ],
+      "records": 4000,
+      "bytes": 2844284,
+      "sha256": "7d66fadba4ac6bf455b73e5242feaf16c0ae08e635d46cb29ec0cbc07919eaf9"
+    },
+    {
+      "filename": "flights-02-857ee0ced245.txt",
+      "kind": "flight",
+      "roles": [
+        "flight"
+      ],
+      "records": 4000,
+      "bytes": 2844490,
+      "sha256": "857ee0ced245d9c20f20f3169ec5702afa0ff12c15a73d58d1da3864c93f09e7"
+    },
+    {
+      "filename": "flights-03-7467ce031023.txt",
+      "kind": "flight",
+      "roles": [
+        "flight"
+      ],
+      "records": 4000,
+      "bytes": 2845974,
+      "sha256": "7467ce031023799de9c4a93ceaabf7b53007959c98e7ed1541c5dc79d310925a"
+    },
+    {
+      "filename": "flights-04-085742a16a72.txt",
+      "kind": "flight",
+      "roles": [
+        "flight"
+      ],
+      "records": 4000,
+      "bytes": 2847012,
+      "sha256": "085742a16a720fe3dc6e9f7287babd49dd16d72d1a273556d59d6e7283892789"
+    },
+    {
+      "filename": "flights-05-10780c4e7649.txt",
+      "kind": "flight",
+      "roles": [
+        "flight"
+      ],
+      "records": 4000,
+      "bytes": 2844311,
+      "sha256": "10780c4e7649b8bc1072ccc5765a8e903e6b6b9b84c9aefed012db19b1558f0a"
+    },
+    {
+      "filename": "flights-06-a2dfbbdb8117.txt",
+      "kind": "flight",
+      "roles": [
+        "flight"
+      ],
+      "records": 640,
+      "bytes": 457589,
+      "sha256": "a2dfbbdb81177f4f4ac89a2d53e6320cb05c1c2979265088c1a5bfa4a987c685"
+    },
+    {
+      "filename": "fares-01-f37a32582f4f.txt",
+      "kind": "fare",
+      "roles": [
+        "price"
+      ],
+      "records": 8000,
+      "bytes": 5969712,
+      "sha256": "f37a32582f4f1531b6189af959a471e32ade46d470a2327e1a5da9862e8f5ee1"
+    },
+    {
+      "filename": "fares-02-85677220b42e.txt",
+      "kind": "fare",
+      "roles": [
+        "price"
+      ],
+      "records": 8000,
+      "bytes": 5969712,
+      "sha256": "85677220b42e565161b75942791514f85b9422aec9ef5113415392c86f6d02fd"
+    },
+    {
+      "filename": "fares-03-6488dd73c40a.txt",
+      "kind": "fare",
+      "roles": [
+        "price"
+      ],
+      "records": 8000,
+      "bytes": 5969712,
+      "sha256": "6488dd73c40a8fbc7fd68ae3e69f473f1e8bdf4d7bd079b0d91109b826ac895d"
+    },
+    {
+      "filename": "fares-04-8430133a2f39.txt",
+      "kind": "fare",
+      "roles": [
+        "price"
+      ],
+      "records": 8000,
+      "bytes": 5969714,
+      "sha256": "8430133a2f39cff8b8c586b7e5fb3c8030750420911ea05ace48682457343237"
+    },
+    {
+      "filename": "fares-05-0e6b746bce7c.txt",
+      "kind": "fare",
+      "roles": [
+        "price"
+      ],
+      "records": 8000,
+      "bytes": 5969713,
+      "sha256": "0e6b746bce7c288311ec7e4a8f6d4173c51363267f6baf86835a8aacee72c1ab"
+    },
+    {
+      "filename": "fares-06-d1e60ec4a5ff.txt",
+      "kind": "fare",
+      "roles": [
+        "price"
+      ],
+      "records": 8000,
+      "bytes": 5969714,
+      "sha256": "d1e60ec4a5ff7716e1103c548d5a109b258de8757d5b340917a387adc5066ed9"
+    }
+  ],
+  "snapshotHash": "c33723ff4f0870501088ec60768584e6b8f6b7b2e6422537cada1c18d8d60fd1",
+  "roles": {
+    "intent": [
+      "overview-b8b288ee7ed5.txt"
+    ],
+    "planner": [
+      "overview-b8b288ee7ed5.txt",
+      "geography-122813f45af9.txt",
+      "planner-context-131748df2f13.txt"
+    ],
+    "flight": [
+      "overview-b8b288ee7ed5.txt",
+      "geography-122813f45af9.txt",
+      "flights-01-7d66fadba4ac.txt",
+      "flights-02-857ee0ced245.txt",
+      "flights-03-7467ce031023.txt",
+      "flights-04-085742a16a72.txt",
+      "flights-05-10780c4e7649.txt",
+      "flights-06-a2dfbbdb8117.txt"
+    ],
+    "price": [
+      "overview-b8b288ee7ed5.txt",
+      "geography-122813f45af9.txt",
+      "fares-01-f37a32582f4f.txt",
+      "fares-02-85677220b42e.txt",
+      "fares-03-6488dd73c40a.txt",
+      "fares-04-8430133a2f39.txt",
+      "fares-05-0e6b746bce7c.txt",
+      "fares-06-d1e60ec4a5ff.txt"
+    ]
+  }
+}

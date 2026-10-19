@@ -1,0 +1,5 @@
+--index-url https://packagefeedproxy.microsoft.io/pypi/simple/
+azure-ai-agentserver-invocations==1.2.0
+azure-ai-agentserver-core==2.2.0
+httpx==0.28.1
+websockets==15.0.1

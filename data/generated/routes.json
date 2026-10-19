@@ -1,0 +1,1436 @@
+{
+  "metadata": {
+    "mock": true,
+    "coverage": "僅限 marketingCarrier=DEMO 且 operatingCarrier=DEMO、非共掛的假設合成 DEMO；不是已核驗的梅好 Airlines營運航網。剔除松山-羽田、桃園-奧克蘭直飛、桃園-宿霧等未能支持的示範路線；不以 AE 或合作航空補足。",
+    "marketingCarrier": "DEMO",
+    "operatingCarrier": "DEMO",
+    "codeshare": false,
+    "routeEvidenceStatus": "synthetic-demo-not-real-world",
+    "routeAudit": "2026-10-16 官方 route-map 回應 NEXT_NOT_FOUND；成田官方動態到站頁無可讀逐航班資料。未核驗任何逐航線營運資格。DEMO 欄位僅為合成範圍約束，非營運證明。",
+    "sourceReference": "https://www.example.invalid/tw/zh/discover/map/route-map",
+    "sourceAccessDate": "2026-10-16",
+    "sourceStatus": "已嘗試存取官方來源，未取得可驗證的逐航線 operating carrier inventory；所有保留航線皆為假設 DEMO DEMO，不是官方匯出或已證實的實際 DEMO 航線。",
+    "staticFacts": "IATA 代碼、城市及 IANA 時區為人工整理的參考資料；未宣稱經官方完整核驗。",
+    "syntheticFields": [
+      "routes",
+      "flightNumber",
+      "schedule",
+      "duration",
+      "cabins",
+      "availability",
+      "fares",
+      "offers"
+    ],
+    "currency": "TWD",
+    "fareBasis": "單程、每位成人、含合成稅費；非可售票價。",
+    "startDate": "2026-10-16",
+    "days": 120,
+    "generatorVersion": 2
+  },
+  "records": [
+    {
+      "id": "MOCK-R1",
+      "origin": "TPE",
+      "destination": "NRT",
+      "minutes": 180,
+      "baseFare": 8500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R2",
+      "origin": "NRT",
+      "destination": "TPE",
+      "minutes": 180,
+      "baseFare": 8500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R3",
+      "origin": "TPE",
+      "destination": "KIX",
+      "minutes": 150,
+      "baseFare": 7800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R4",
+      "origin": "KIX",
+      "destination": "TPE",
+      "minutes": 150,
+      "baseFare": 7800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R5",
+      "origin": "TPE",
+      "destination": "NGO",
+      "minutes": 165,
+      "baseFare": 8000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R6",
+      "origin": "NGO",
+      "destination": "TPE",
+      "minutes": 165,
+      "baseFare": 8000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R7",
+      "origin": "TPE",
+      "destination": "FUK",
+      "minutes": 140,
+      "baseFare": 7200,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R8",
+      "origin": "FUK",
+      "destination": "TPE",
+      "minutes": 140,
+      "baseFare": 7200,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R9",
+      "origin": "TPE",
+      "destination": "CTS",
+      "minutes": 240,
+      "baseFare": 10500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R10",
+      "origin": "CTS",
+      "destination": "TPE",
+      "minutes": 240,
+      "baseFare": 10500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R11",
+      "origin": "TPE",
+      "destination": "OKA",
+      "minutes": 90,
+      "baseFare": 6000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R12",
+      "origin": "OKA",
+      "destination": "TPE",
+      "minutes": 90,
+      "baseFare": 6000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R13",
+      "origin": "KHH",
+      "destination": "NRT",
+      "minutes": 200,
+      "baseFare": 8700,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R14",
+      "origin": "NRT",
+      "destination": "KHH",
+      "minutes": 200,
+      "baseFare": 8700,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R15",
+      "origin": "KHH",
+      "destination": "KIX",
+      "minutes": 170,
+      "baseFare": 8000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R16",
+      "origin": "KIX",
+      "destination": "KHH",
+      "minutes": 170,
+      "baseFare": 8000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R17",
+      "origin": "TPE",
+      "destination": "ICN",
+      "minutes": 150,
+      "baseFare": 6800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R18",
+      "origin": "ICN",
+      "destination": "TPE",
+      "minutes": 150,
+      "baseFare": 6800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R19",
+      "origin": "TPE",
+      "destination": "PUS",
+      "minutes": 140,
+      "baseFare": 6500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R20",
+      "origin": "PUS",
+      "destination": "TPE",
+      "minutes": 140,
+      "baseFare": 6500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R21",
+      "origin": "TPE",
+      "destination": "HKG",
+      "minutes": 110,
+      "baseFare": 5000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R22",
+      "origin": "HKG",
+      "destination": "TPE",
+      "minutes": 110,
+      "baseFare": 5000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R23",
+      "origin": "KHH",
+      "destination": "HKG",
+      "minutes": 95,
+      "baseFare": 4800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R24",
+      "origin": "HKG",
+      "destination": "KHH",
+      "minutes": 95,
+      "baseFare": 4800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R25",
+      "origin": "TPE",
+      "destination": "PVG",
+      "minutes": 120,
+      "baseFare": 6500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R26",
+      "origin": "PVG",
+      "destination": "TPE",
+      "minutes": 120,
+      "baseFare": 6500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R27",
+      "origin": "TPE",
+      "destination": "PEK",
+      "minutes": 200,
+      "baseFare": 9000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R28",
+      "origin": "PEK",
+      "destination": "TPE",
+      "minutes": 200,
+      "baseFare": 9000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R29",
+      "origin": "TPE",
+      "destination": "CAN",
+      "minutes": 135,
+      "baseFare": 6500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R30",
+      "origin": "CAN",
+      "destination": "TPE",
+      "minutes": 135,
+      "baseFare": 6500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R31",
+      "origin": "TPE",
+      "destination": "BKK",
+      "minutes": 230,
+      "baseFare": 7500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R32",
+      "origin": "BKK",
+      "destination": "TPE",
+      "minutes": 230,
+      "baseFare": 7500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R33",
+      "origin": "KHH",
+      "destination": "BKK",
+      "minutes": 210,
+      "baseFare": 7000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R34",
+      "origin": "BKK",
+      "destination": "KHH",
+      "minutes": 210,
+      "baseFare": 7000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R35",
+      "origin": "TPE",
+      "destination": "CNX",
+      "minutes": 220,
+      "baseFare": 7300,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R36",
+      "origin": "CNX",
+      "destination": "TPE",
+      "minutes": 220,
+      "baseFare": 7300,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R37",
+      "origin": "TPE",
+      "destination": "SIN",
+      "minutes": 280,
+      "baseFare": 8800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R38",
+      "origin": "SIN",
+      "destination": "TPE",
+      "minutes": 280,
+      "baseFare": 8800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R39",
+      "origin": "TPE",
+      "destination": "KUL",
+      "minutes": 280,
+      "baseFare": 7600,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R40",
+      "origin": "KUL",
+      "destination": "TPE",
+      "minutes": 280,
+      "baseFare": 7600,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R41",
+      "origin": "TPE",
+      "destination": "PEN",
+      "minutes": 275,
+      "baseFare": 7500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R42",
+      "origin": "PEN",
+      "destination": "TPE",
+      "minutes": 275,
+      "baseFare": 7500,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R43",
+      "origin": "TPE",
+      "destination": "SGN",
+      "minutes": 210,
+      "baseFare": 7000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R44",
+      "origin": "SGN",
+      "destination": "TPE",
+      "minutes": 210,
+      "baseFare": 7000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R45",
+      "origin": "TPE",
+      "destination": "HAN",
+      "minutes": 180,
+      "baseFare": 6800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R46",
+      "origin": "HAN",
+      "destination": "TPE",
+      "minutes": 180,
+      "baseFare": 6800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R47",
+      "origin": "TPE",
+      "destination": "DAD",
+      "minutes": 170,
+      "baseFare": 6600,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R48",
+      "origin": "DAD",
+      "destination": "TPE",
+      "minutes": 170,
+      "baseFare": 6600,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R49",
+      "origin": "TPE",
+      "destination": "MNL",
+      "minutes": 140,
+      "baseFare": 5200,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R50",
+      "origin": "MNL",
+      "destination": "TPE",
+      "minutes": 140,
+      "baseFare": 5200,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R51",
+      "origin": "TPE",
+      "destination": "CGK",
+      "minutes": 325,
+      "baseFare": 9800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R52",
+      "origin": "CGK",
+      "destination": "TPE",
+      "minutes": 325,
+      "baseFare": 9800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R53",
+      "origin": "TPE",
+      "destination": "DPS",
+      "minutes": 330,
+      "baseFare": 10800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R54",
+      "origin": "DPS",
+      "destination": "TPE",
+      "minutes": 330,
+      "baseFare": 10800,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R55",
+      "origin": "TPE",
+      "destination": "DEL",
+      "minutes": 420,
+      "baseFare": 13000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R56",
+      "origin": "DEL",
+      "destination": "TPE",
+      "minutes": 420,
+      "baseFare": 13000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R57",
+      "origin": "TPE",
+      "destination": "LAX",
+      "minutes": 720,
+      "baseFare": 23500,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R58",
+      "origin": "LAX",
+      "destination": "TPE",
+      "minutes": 720,
+      "baseFare": 23500,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R59",
+      "origin": "TPE",
+      "destination": "SFO",
+      "minutes": 690,
+      "baseFare": 23000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R60",
+      "origin": "SFO",
+      "destination": "TPE",
+      "minutes": 690,
+      "baseFare": 23000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R61",
+      "origin": "TPE",
+      "destination": "SEA",
+      "minutes": 660,
+      "baseFare": 22000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R62",
+      "origin": "SEA",
+      "destination": "TPE",
+      "minutes": 660,
+      "baseFare": 22000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R63",
+      "origin": "TPE",
+      "destination": "JFK",
+      "minutes": 900,
+      "baseFare": 28500,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R64",
+      "origin": "JFK",
+      "destination": "TPE",
+      "minutes": 900,
+      "baseFare": 28500,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R65",
+      "origin": "TPE",
+      "destination": "YVR",
+      "minutes": 660,
+      "baseFare": 22500,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R66",
+      "origin": "YVR",
+      "destination": "TPE",
+      "minutes": 660,
+      "baseFare": 22500,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R67",
+      "origin": "TPE",
+      "destination": "LHR",
+      "minutes": 900,
+      "baseFare": 28000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R68",
+      "origin": "LHR",
+      "destination": "TPE",
+      "minutes": 900,
+      "baseFare": 28000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R69",
+      "origin": "TPE",
+      "destination": "FRA",
+      "minutes": 840,
+      "baseFare": 26000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R70",
+      "origin": "FRA",
+      "destination": "TPE",
+      "minutes": 840,
+      "baseFare": 26000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R71",
+      "origin": "TPE",
+      "destination": "AMS",
+      "minutes": 840,
+      "baseFare": 26000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R72",
+      "origin": "AMS",
+      "destination": "TPE",
+      "minutes": 840,
+      "baseFare": 26000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R73",
+      "origin": "TPE",
+      "destination": "FCO",
+      "minutes": 830,
+      "baseFare": 25000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R74",
+      "origin": "FCO",
+      "destination": "TPE",
+      "minutes": 830,
+      "baseFare": 25000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R75",
+      "origin": "TPE",
+      "destination": "VIE",
+      "minutes": 820,
+      "baseFare": 25000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R76",
+      "origin": "VIE",
+      "destination": "TPE",
+      "minutes": 820,
+      "baseFare": 25000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R77",
+      "origin": "TPE",
+      "destination": "PRG",
+      "minutes": 850,
+      "baseFare": 26000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R78",
+      "origin": "PRG",
+      "destination": "TPE",
+      "minutes": 850,
+      "baseFare": 26000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R79",
+      "origin": "TPE",
+      "destination": "SYD",
+      "minutes": 570,
+      "baseFare": 18500,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R80",
+      "origin": "SYD",
+      "destination": "TPE",
+      "minutes": 570,
+      "baseFare": 18500,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R81",
+      "origin": "TPE",
+      "destination": "MEL",
+      "minutes": 580,
+      "baseFare": 19000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R82",
+      "origin": "MEL",
+      "destination": "TPE",
+      "minutes": 580,
+      "baseFare": 19000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R83",
+      "origin": "TPE",
+      "destination": "BNE",
+      "minutes": 540,
+      "baseFare": 18000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R84",
+      "origin": "BNE",
+      "destination": "TPE",
+      "minutes": 540,
+      "baseFare": 18000,
+      "cabins": [
+        "economy",
+        "premium",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R85",
+      "origin": "TPE",
+      "destination": "GUM",
+      "minutes": 235,
+      "baseFare": 10000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    },
+    {
+      "id": "MOCK-R86",
+      "origin": "GUM",
+      "destination": "TPE",
+      "minutes": 235,
+      "baseFare": 10000,
+      "cabins": [
+        "economy",
+        "business"
+      ],
+      "mock": true,
+      "marketingCarrier": "DEMO",
+      "operatingCarrier": "DEMO",
+      "codeshare": false,
+      "routeEvidenceStatus": "synthetic-demo-not-real-world"
+    }
+  ]
+}

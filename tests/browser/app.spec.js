@@ -1,0 +1,85 @@
+import { test, expect } from '@playwright/test';
+import { countWords } from '../../lib/replies.js';
+async function say(page, text) {
+  await page.locator('#message').fill(text);
+  await page.locator('#message').press('Enter');
+  await expect(page.locator('#send')).toBeEnabled();
+  for (let i = 0; i < 100; i++) {
+    const more = await page.evaluate(async () => (await (await fetch('/api/bootstrap')).json()).state.moreReply);
+    if (!more || await page.locator('#error').isVisible()) break;
+    await page.locator('#message').fill('繼續');
+    await page.locator('#message').press('Enter');
+    await expect(page.locator('#send')).toBeEnabled();
+  }
+  const replies = await page.locator('.message.assistant > div > p:not(.speaker)').allTextContents();
+  for (const reply of replies) expect(countWords(reply)).toBeLessThanOrEqual(50);
+}
+test('desktop chat-only planning, selection, quote and confirmation with no choice controls', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  await page.goto('/?scoutTheme=dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('#send')).toBeEnabled();
+  await expect(page.locator('.rail, .steps, .conversation-head, .brand-mark')).toHaveCount(0);
+  await expect(page.locator('select, input, .card, [data-prompt], #trip-form')).toHaveCount(0);
+  await say(page, '從桃園到成田，2026-11-12，2 人，經濟艙，少步行，請規劃行程');
+  await expect(page.locator('#messages')).toContainText('東京・三日靈感提案');
+  await say(page, '搜尋航班，比較前後一天');
+  await expect(page.locator('#messages')).toContainText('DEMO-FLT-');
+  await expect(page.getByRole('button', { name: '選擇', exact: true })).toHaveCount(0);
+  await say(page, '選第二班');
+  await expect(page.locator('#messages')).toContainText('已選第 2 班');
+  await say(page, '重新報價');
+  await expect(page.locator('#messages')).toContainText('模擬確認價：TWD');
+  await page.reload();
+  await expect(page.locator('#messages')).toContainText('模擬確認價：TWD');
+  await say(page, '確認目前報價');
+  await expect(page.locator('#messages')).toContainText('模擬識別碼：SIM-');
+  await page.getByRole('link', { name: '開啟模擬結帳（不收款）' }).click();
+  await expect(page).toHaveTitle('模擬結帳 · 梅好旅程');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', /light|dark/);
+  await expect(page.locator('body')).toContainText('不接受信用卡、不扣款、不訂位、不開票');
+  await expect(page.locator('input, form')).toHaveCount(0);
+  await page.getByRole('link', { name: '回到旅行對話' }).click();
+  await expect(page.locator('#send')).toBeEnabled();
+  await expect(page.locator('select, input, .card, [data-prompt], #purchase')).toHaveCount(0);
+  await page.getByRole('button', { name: /Talk to agent/ }).click();
+  await expect(page.locator('#voice-dialog')).toContainText('尚未啟用');
+  await expect(page.locator('#voice-start')).toBeHidden();
+  await page.getByRole('button', { name: '關閉，繼續文字規劃' }).click();
+  await page.screenshot({ path: 'test-results/desktop.png', fullPage: true });
+  expect(errors).toEqual([]);
+});
+test('mobile partial chat setup, keyboard submission and recoverable retry', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.locator('#send')).toBeEnabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await say(page, '從桃園到成田');
+  await expect(page.locator('#messages')).toContainText('哪一天出發');
+  await page.route('**/api/chat', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'TEST', message: '暫時無法連線', correlationId: 'test' }) }));
+  await say(page, '2026-11-12，2 人，經濟艙，請規劃行程');
+  await expect(page.getByRole('alert')).toContainText('暫時無法連線');
+  await page.unroute('**/api/chat');
+  await page.getByRole('button', { name: '重試', exact: true }).click();
+  await expect(page.locator('#messages')).toContainText('東京・三日靈感提案');
+  await expect(page.getByRole('alert')).toBeHidden();
+  await expect(page.locator('select, input, .card, [data-prompt]')).toHaveCount(0);
+  await page.screenshot({ path: 'test-results/mobile.png', fullPage: true });
+});
+test('country-level inspiration and five-day plan never request codes or trigger a search', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#send')).toBeEnabled();
+  await say(page, '我想去日本玩幾天');
+  await expect(page.getByRole('alert')).toBeHidden();
+  await say(page, '想賞楓，不要走太多路，下個月中，五天，帶媽媽');
+  await say(page, '那東京好了，幫我安排五天');
+  await expect(page.locator('#messages')).toContainText('第 5 天');
+  await expect(page.locator('#messages')).not.toContainText('UNKNOWN_CITY');
+  const state = await page.evaluate(async () => (await (await fetch('/api/bootstrap')).json()).state);
+  expect(state.discovery.country).toBe('日本');
+  expect(state.discovery.durationDays).toBe(5);
+  expect(state.draft.lowWalking).toBe(true);
+  expect(state.toolUnits).toBe(0);
+});

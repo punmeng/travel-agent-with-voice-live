@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="梅好 Airlines風格旅程規劃示範：四代理協作、合成航班與模擬票價，非官方服務。">
+  <title>梅好旅程 · AI 旅遊規劃師</title>
+  <script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="梅好旅程首頁">梅好旅程</a>
+    <span class="badge" id="mode">AI mock · 旅遊／付款模擬</span>
+    <button id="new-trip" class="quiet">新旅程</button>
+  </header>
+  <main class="layout">
+    <section class="conversation" aria-label="旅程對話">
+      <p class="notice">非官方示範 · 航班／票價皆合成，不訂位、不收款。</p>
+      <div id="messages" class="messages" role="log" aria-live="polite" aria-label="對話訊息">
+        <article class="message assistant"><div><p class="speaker">旅程助手</p><p>想去哪裡走走？還沒決定也可以一起聊。請勿提供護照或信用卡資料。</p></div></article>
+      </div>
+      <div id="busy" class="busy" role="status" hidden>旅程團隊正在整理您的提案…</div>
+      <div id="error" class="error" role="alert" hidden><span></span><button id="retry">重試</button></div>
+      <div class="composer-area">
+        <section id="voice-dialog" aria-labelledby="voice-title" hidden><div class="voice-heading"><h3 id="voice-title">Azure Voice Live</h3><span id="voice-agent" class="agent-badge" role="status" aria-live="polite" aria-atomic="true">等待對話</span></div><p id="voice-status" role="status" aria-live="polite">尚未收音</p><p class="muted">按開始即將麥克風音訊傳至 Azure。</p><div class="voice-controls"><button id="voice-start" class="primary">開始語音</button><button id="voice-mute" disabled aria-pressed="false">靜音</button><button id="voice-stop" disabled>停止語音</button><button id="close-voice">關閉，繼續文字規劃</button></div><details id="voice-error" hidden><summary>診斷資訊</summary><p id="voice-error-details"></p></details><details class="muted"><summary>語音與模擬資料說明</summary><p id="voice-message"></p><p>請先讀完報價再確認；不收款、不訂位、不開票。</p></details></section>
+        <form id="chat-form" class="composer"><label class="sr-only" for="message">傳送訊息</label><textarea id="message" rows="1" maxlength="2000" placeholder="聊聊旅行想法…" required></textarea><button type="submit" id="send" aria-label="傳送訊息">↑</button></form>
+        <div class="composer-foot"><button id="voice" class="voice">◉ Talk to agent <span>待設定 Voice Live</span></button><small>Enter 傳送 · Shift + Enter 換行</small></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

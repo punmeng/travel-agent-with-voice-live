@@ -1,0 +1,302 @@
+{
+  "metadata": {
+    "mock": true,
+    "coverage": "僅限 marketingCarrier=DEMO 且 operatingCarrier=DEMO、非共掛的假設合成 DEMO；不是已核驗的梅好 Airlines營運航網。剔除松山-羽田、桃園-奧克蘭直飛、桃園-宿霧等未能支持的示範路線；不以 AE 或合作航空補足。",
+    "marketingCarrier": "DEMO",
+    "operatingCarrier": "DEMO",
+    "codeshare": false,
+    "routeEvidenceStatus": "synthetic-demo-not-real-world",
+    "routeAudit": "2026-10-16 官方 route-map 回應 NEXT_NOT_FOUND；成田官方動態到站頁無可讀逐航班資料。未核驗任何逐航線營運資格。DEMO 欄位僅為合成範圍約束，非營運證明。",
+    "sourceReference": "https://www.example.invalid/tw/zh/discover/map/route-map",
+    "sourceAccessDate": "2026-10-16",
+    "sourceStatus": "已嘗試存取官方來源，未取得可驗證的逐航線 operating carrier inventory；所有保留航線皆為假設 DEMO DEMO，不是官方匯出或已證實的實際 DEMO 航線。",
+    "staticFacts": "IATA 代碼、城市及 IANA 時區為人工整理的參考資料；未宣稱經官方完整核驗。",
+    "syntheticFields": [
+      "routes",
+      "flightNumber",
+      "schedule",
+      "duration",
+      "cabins",
+      "availability",
+      "fares",
+      "offers"
+    ],
+    "currency": "TWD",
+    "fareBasis": "單程、每位成人、含合成稅費；非可售票價。",
+    "startDate": "2026-10-16",
+    "days": 120,
+    "generatorVersion": 2
+  },
+  "records": [
+    {
+      "code": "TPE",
+      "city": "桃園",
+      "name": "臺灣桃園",
+      "timezone": "Asia/Taipei"
+    },
+    {
+      "code": "TSA",
+      "city": "台北",
+      "name": "臺北松山",
+      "timezone": "Asia/Taipei"
+    },
+    {
+      "code": "KHH",
+      "city": "高雄",
+      "name": "高雄國際",
+      "timezone": "Asia/Taipei"
+    },
+    {
+      "code": "NRT",
+      "city": "東京",
+      "name": "成田",
+      "timezone": "Asia/Tokyo"
+    },
+    {
+      "code": "HND",
+      "city": "東京羽田",
+      "name": "羽田",
+      "timezone": "Asia/Tokyo"
+    },
+    {
+      "code": "KIX",
+      "city": "大阪",
+      "name": "關西",
+      "timezone": "Asia/Tokyo"
+    },
+    {
+      "code": "NGO",
+      "city": "名古屋",
+      "name": "中部",
+      "timezone": "Asia/Tokyo"
+    },
+    {
+      "code": "FUK",
+      "city": "福岡",
+      "name": "福岡",
+      "timezone": "Asia/Tokyo"
+    },
+    {
+      "code": "CTS",
+      "city": "札幌",
+      "name": "新千歲",
+      "timezone": "Asia/Tokyo"
+    },
+    {
+      "code": "OKA",
+      "city": "沖繩",
+      "name": "那霸",
+      "timezone": "Asia/Tokyo"
+    },
+    {
+      "code": "ICN",
+      "city": "首爾",
+      "name": "仁川",
+      "timezone": "Asia/Seoul"
+    },
+    {
+      "code": "PUS",
+      "city": "釜山",
+      "name": "金海",
+      "timezone": "Asia/Seoul"
+    },
+    {
+      "code": "HKG",
+      "city": "香港",
+      "name": "香港國際",
+      "timezone": "Asia/Hong_Kong"
+    },
+    {
+      "code": "PVG",
+      "city": "上海",
+      "name": "浦東",
+      "timezone": "Asia/Shanghai"
+    },
+    {
+      "code": "PEK",
+      "city": "北京",
+      "name": "首都",
+      "timezone": "Asia/Shanghai"
+    },
+    {
+      "code": "CAN",
+      "city": "廣州",
+      "name": "白雲",
+      "timezone": "Asia/Shanghai"
+    },
+    {
+      "code": "BKK",
+      "city": "曼谷",
+      "name": "素萬那普",
+      "timezone": "Asia/Bangkok"
+    },
+    {
+      "code": "CNX",
+      "city": "清邁",
+      "name": "清邁",
+      "timezone": "Asia/Bangkok"
+    },
+    {
+      "code": "SIN",
+      "city": "新加坡",
+      "name": "樟宜",
+      "timezone": "Asia/Singapore"
+    },
+    {
+      "code": "KUL",
+      "city": "吉隆坡",
+      "name": "吉隆坡國際",
+      "timezone": "Asia/Kuala_Lumpur"
+    },
+    {
+      "code": "PEN",
+      "city": "檳城",
+      "name": "檳城",
+      "timezone": "Asia/Kuala_Lumpur"
+    },
+    {
+      "code": "SGN",
+      "city": "胡志明市",
+      "name": "新山一",
+      "timezone": "Asia/Ho_Chi_Minh"
+    },
+    {
+      "code": "HAN",
+      "city": "河內",
+      "name": "內排",
+      "timezone": "Asia/Ho_Chi_Minh"
+    },
+    {
+      "code": "DAD",
+      "city": "峴港",
+      "name": "峴港",
+      "timezone": "Asia/Ho_Chi_Minh"
+    },
+    {
+      "code": "MNL",
+      "city": "馬尼拉",
+      "name": "尼諾伊",
+      "timezone": "Asia/Manila"
+    },
+    {
+      "code": "CEB",
+      "city": "宿霧",
+      "name": "麥克坦",
+      "timezone": "Asia/Manila"
+    },
+    {
+      "code": "CGK",
+      "city": "雅加達",
+      "name": "蘇加諾哈達",
+      "timezone": "Asia/Jakarta"
+    },
+    {
+      "code": "DPS",
+      "city": "峇里島",
+      "name": "伍拉賴",
+      "timezone": "Asia/Makassar"
+    },
+    {
+      "code": "DEL",
+      "city": "德里",
+      "name": "英迪拉甘地",
+      "timezone": "Asia/Kolkata"
+    },
+    {
+      "code": "LAX",
+      "city": "洛杉磯",
+      "name": "洛杉磯國際",
+      "timezone": "America/Los_Angeles"
+    },
+    {
+      "code": "SFO",
+      "city": "舊金山",
+      "name": "舊金山國際",
+      "timezone": "America/Los_Angeles"
+    },
+    {
+      "code": "SEA",
+      "city": "西雅圖",
+      "name": "西雅圖塔科馬",
+      "timezone": "America/Los_Angeles"
+    },
+    {
+      "code": "JFK",
+      "city": "紐約",
+      "name": "甘迺迪",
+      "timezone": "America/New_York"
+    },
+    {
+      "code": "YVR",
+      "city": "溫哥華",
+      "name": "溫哥華國際",
+      "timezone": "America/Vancouver"
+    },
+    {
+      "code": "LHR",
+      "city": "倫敦",
+      "name": "希斯洛",
+      "timezone": "Europe/London"
+    },
+    {
+      "code": "FRA",
+      "city": "法蘭克福",
+      "name": "法蘭克福",
+      "timezone": "Europe/Berlin"
+    },
+    {
+      "code": "AMS",
+      "city": "阿姆斯特丹",
+      "name": "史基浦",
+      "timezone": "Europe/Amsterdam"
+    },
+    {
+      "code": "FCO",
+      "city": "羅馬",
+      "name": "達文西",
+      "timezone": "Europe/Rome"
+    },
+    {
+      "code": "VIE",
+      "city": "維也納",
+      "name": "維也納國際",
+      "timezone": "Europe/Vienna"
+    },
+    {
+      "code": "PRG",
+      "city": "布拉格",
+      "name": "哈維爾",
+      "timezone": "Europe/Prague"
+    },
+    {
+      "code": "SYD",
+      "city": "雪梨",
+      "name": "雪梨國際",
+      "timezone": "Australia/Sydney"
+    },
+    {
+      "code": "MEL",
+      "city": "墨爾本",
+      "name": "墨爾本國際",
+      "timezone": "Australia/Melbourne"
+    },
+    {
+      "code": "BNE",
+      "city": "布里斯本",
+      "name": "布里斯本",
+      "timezone": "Australia/Brisbane"
+    },
+    {
+      "code": "AKL",
+      "city": "奧克蘭",
+      "name": "奧克蘭國際",
+      "timezone": "Pacific/Auckland"
+    },
+    {
+      "code": "GUM",
+      "city": "關島",
+      "name": "安東尼奧",
+      "timezone": "Pacific/Guam"
+    }
+  ]
+}

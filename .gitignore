@@ -1,0 +1,21 @@
+node_modules/
+.env
+.env.*
+!.env.example
+test-results/
+playwright-report/
+*.log
+.workbook-tests/
+.copilot-azure/
+.foundry/
+__pycache__/
+*.pyc
+.venv/
+venv/
+uploads/
+recordings/
+*.wav
+*.pem
+*.key
+# Generated snapshots: only the current manifest's explicitly staged files ship.
+data/knowledge/*.txt
