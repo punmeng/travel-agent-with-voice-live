@@ -34,7 +34,7 @@ export async function importMappingWorkbook(path, { apply = false, destination =
   }
   return { valid: true, applied: apply, rows: snapshot.rows.length,
     cities: new Set(snapshot.rows.map(row => row.city_id)).size,
-    routeReferences: snapshot.routeReferences.length, ciEligibilityChanged: false, restartRequired: apply };
+    routeReferences: snapshot.routeReferences.length, routeEligibilityChanged: false, restartRequired: apply };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2), paths = args.filter(arg => arg !== '--apply');

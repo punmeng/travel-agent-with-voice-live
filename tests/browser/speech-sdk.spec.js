@@ -41,11 +41,11 @@ for (const rate of [8000, 16000]) {
     });
     await sdkPage(page);
     await page.locator('#speech-silence').selectOption('1000');
-    await page.locator('#speech-phrases').fill('梅好 Airlines\n桃園');
+    await page.locator('#speech-phrases').fill('梅好\n桃園');
     await page.locator('#speech-wav').setInputFiles({ name: 'test.wav', mimeType: 'audio/wav', buffer: wav(rate) });
     await page.locator('#voice-start').click();
     await expect.poll(() => page.evaluate(() => window.__socket?.packets.length ?? 0)).toBeGreaterThan(0);
-    expect(input).toEqual({ stt: 'sdk', source: 'wav', sampleRate: rate, silenceMs: 1000, phrases: ['梅好 Airlines', '桃園'], chunkBytes: 1280 });
+    expect(input).toEqual({ stt: 'sdk', source: 'wav', sampleRate: rate, silenceMs: 1000, phrases: ['梅好', '桃園'], chunkBytes: 1280 });
     await page.evaluate(() => {
       window.__socket.receive({ type: 'asr', kind: 'recognizing', text: '東', sequence: 1, elapsedMs: 20 });
       window.__socket.receive({ type: 'state', state: 'thinking' });

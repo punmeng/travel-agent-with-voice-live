@@ -21,7 +21,7 @@ test('MCP tools/list and strict contract share search, offer and reprice handler
     const geography = JSON.parse(mapping.content[0].text);
     assert.equal(geography.data.status, 'matched');
     assert.deepEqual(geography.data.cities[0].airports.map(airport => airport.iata), ['TPE', 'TSA']);
-    assert.equal(geography.data.syntheticRouteEligibility, 'not-determined');
+    assert.equal(geography.data.routeEligibility, 'not-determined');
     assert.equal((await client.callTool({ name: 'resolve_city_airports',
       arguments: { query: 'Tokyo', countryCode: null, carrier: 'AE' } })).isError, true);
     const bad = await client.callTool({ name: 'search_flights', arguments: { ...search, price: 1 } });

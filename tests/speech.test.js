@@ -11,7 +11,7 @@ test('voice omits explicit source metadata and citation tokens but preserves ans
   const answer = 'DEMO101，TWD 12,345。航班與價格均為模擬，營業時間未核驗。';
   for (const suffix of [
     '\n\n知識來源（合成示範靜態快照）：flight-knowledge.txt',
-    '\n資料來源：梅好 Airlines網站 https://example.test/source',
+    '\n資料來源：旅遊資訊網站 https://example.test/source',
     '\n**參考資料：**\n- [航點](https://example.test/stops)\n- flight-knowledge.txt',
     '\n### Sources\n1. https://example.test/source',
     '\n來源：https://example.test/source'
@@ -31,7 +31,7 @@ test('voice omits explicit source metadata and citation tokens but preserves ans
 test('flight/code letters are spelled separately and Mandarin digits preserve I versus 1 and leading zero', () => {
   for (const [canonical, spoken] of [
     ['DEMO101', 'D，E，M，O，一，零，一'], ['I1', 'I，一'], ['DEMO0101', 'D，E，M，O，零，一，零，一'],
-    ['TPE', 'T，P，E'], ['DEMO-FLT-30', '模擬班號，D，E，M，O，M，O，C，K，三，零'],
+    ['TPE', 'T，P，E'], ['DEMO-FLT-30', '模擬班號，D，E，M，O，F，L，T，三，零'],
     ['aB010c', 'A，B，零，一，零，C'], ['00101', '零，零，一，零，一']
   ]) assert.equal(speechText(canonical), spoken);
   assert.equal(speechText('Travel planner HELLO welcome'), 'Travel planner HELLO welcome');

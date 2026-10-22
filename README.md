@@ -1,8 +1,8 @@
-# 梅好旅程 · 梅好 Airlines風格 AI 旅遊規劃師
+# 梅好 Airlines · AI 旅遊規劃師
 
-繁體中文、本機優先的可執行示範。以梅花意象、留白與玫紅色呈現航空旅行風格；**非梅好 Airlines官方服務，未使用官方標誌**。
+繁體中文、本機優先的可執行示範。梅好 Airlines 是專案虛構品牌；**不是任何航空公司的服務，未使用客戶名稱或標誌**。
 
-**架構說明更新：2026-10-21，套件版本0.1.0。** 新四架構的原始碼／離線驗證、私人設定及實際運行版本是三件不同的事；既有3100仍是舊行程，本次沒有重啟、雲端呼叫或live驗收。狀態見[本機版本交接](docs/CURRENT-VERSION.md)，客戶比較見[四架構比較與量測](docs/VOICE-COMPARISON.md)。Azure發布、demo-key登入、跨session月額度治理仍暫停且未實作；`prototypes\hosted-adapter`只是隔離離線原型，不屬於正式網站功能。本機版本保存於[GitHub原始碼repository](https://github.com/punmeng/travel-agent-with-voice-live)，這不是已部署的線上網站。
+**架構說明更新：2026-10-22，套件版本0.1.0。** 梅好 Airlines 是非官方示範品牌；航班與票價是虛構合成資料，不代表任何客戶或航空公司。最新本機狀態見[版本交接](docs/CURRENT-VERSION.md)，語音測試設計見[四架構比較與量測](docs/VOICE-COMPARISON.md)。Azure發布、demo-key登入、跨session月額度治理仍暫停且未實作；`prototypes\hosted-adapter`只是隔離離線原型，不屬於正式網站功能。本機版本保存於[GitHub原始碼repository](https://github.com/punmeng/travel-agent-with-voice-live)，這不是已部署的線上網站。
 
 ## 啟動
 
@@ -20,7 +20,7 @@ npm start
 
 介面已精簡為小標頭、聊天與單一輸入區；**每則助理對話最多50詞**，不是50字，也不是英文空白計數。中文／混合文用 `Intl.Segmenter('zh-Hant', { granularity: 'word' })` 的 word-like 分段；日期、金額、識別碼與URL完整保留，模擬結帳連結按畫面標籤計詞。模型先被要求精簡，後端再逐則檢驗；較長行程、航班、引用與報價用「繼續」完整分段，優先在句末或換行切頁，不丟失五天內容。**文字／語音／繼續共用100個成功完成的使用者回合**；冪等重試、等待提示及失敗不計完成回合，失敗可能仍有雲端用量。分段不呼叫模型。50詞不包括角色名稱、介面、錯誤面板或文件。語音依同一受限text作確定性發音展開，不另寫答案；完整航班未呈現不能選擇，完整最新報價未呈現不能同意。長回覆不是截斷後假稱已完成。
 
-詢問機場後回答「都可以／沒差／任何一個／你幫我選」，會按最近問題接受該城市候選集合，不忘記城市或默選機場；「不要松山」可縮小集合。最多2×2機場組合、每組最多三對日期，總工具預算與平行2仍有效。沒有符合的DEMO示範路線不以其他航空補足。文字／語音等待超過15秒會顯示「我還在查詢，請稍等一下。」；語音等待提示僅為畫面狀態，不開第二個朗讀／模型回覆，不佔回合或授權交易。
+詢問機場後回答「都可以／沒差／任何一個／你幫我選」，會按最近問題接受該城市候選集合，不忘記城市或默選機場；「不要松山」可縮小集合。最多2×2機場組合、每組最多三對日期，總工具預算與平行2仍有效。沒有符合的合成示範路線會明確回傳無結果，不補入真實航空公司航班。文字／語音等待超過15秒會顯示「我還在查詢，請稍等一下。」；語音等待提示僅為畫面狀態，不開第二個朗讀／模型回覆，不佔回合或授權交易。
 
 找機票時才逐步確認出發地、日期、同行成人數與艙等。東京／台北的多機場偏好用自然名稱確認，不默選成田或桃園。支援「2026年11月12日」與以台北當天為基準的「下個月12號」；「下個月中」只記偏好，絕不猜成15日。「帶媽媽」不自行當成兩人，仍會自然確認總人數。明確來回日期可組合來回合成票；「早去晚回」是排序偏好，不保證時段一定有機位。
 
@@ -63,7 +63,7 @@ npm start
 
 Personal Voice已於2026-10-19完成同資源唯讀核對及少量真實合成：`azure-personal`／`DragonLatestNeural`，收到100,768 bytes PCM音訊，沒有替代聲音。Voice Live的`name`使用服務回傳的voice資源`id`，不是入口網站顯示名稱，也不是一般SSML的speakerProfileId；identifier只保留於忽略的後端`.env`。未處理錄音或評估人聲相似度。詳見[Personal Voice接線及限制](docs/FOUNDRY.md#personal-voice)。
 
-發音由`lib\speech.js`在送入Voice Live的exact-text合成前正規化一次：`DEMO101`→`D，E，M，O，一，零，一`，`DEMO0101`保留前置零，`DEMO-FLT-30`保留模擬意義並逐字母／數字朗讀，`TPE`→`T，P，E`。一般英文單字不盲目拆字。日期／時間讀繁中語意（如`2026-11-25T08:30`→`二零二六年十一月二十五日上午八點三十分`），TWD金額讀「新臺幣…元」，時區路徑讀臺灣／日本等當地時間標籤。結帳連結只說已放在對話中，不朗讀安全token；畫面原始碼、日期、總額、版本、期限及可點擊連結不改。50詞上限檢查canonical顯示回覆；逐碼發音可能展開較長，不能為縮短而丟掉金額／期限等事實。實際Personal Voice已收到正規化合成音訊，但字母辨識與聲音效果仍需本人試聽。
+發音由`lib\speech.js`在送入Voice Live的exact-text合成前正規化一次：`DEMO101`逐碼讀出，`DEMO0101`保留前置零，`DEMO-FLT-30`保留模擬意義並逐字母／數字朗讀，`TPE`→`T，P，E`。一般英文單字不盲目拆字。日期／時間讀繁中語意（如`2026-11-25T08:30`→`二零二六年十一月二十五日上午八點三十分`），TWD金額讀「新臺幣…元」，時區路徑讀臺灣／日本等當地時間標籤。結帳連結只說已放在對話中，不朗讀安全token；畫面原始碼、日期、總額、版本、期限及可點擊連結不改。50詞上限檢查canonical顯示回覆；逐碼發音可能展開較長，不能為縮短而丟掉金額／期限等事實。實際Personal Voice已收到正規化合成音訊，但字母辨識與聲音效果仍需本人試聽。
 
 可直接開啟本機`.foundry\pronunciation-preview.wav`試聽固定合成句（不是錄音、真實航班或購買）；內容含DEMO101、DEMO0101、TPE、日期時間及TWD總額。重新產生會使用付費雲端語音，須明確授權：`node --env-file=.env scripts\smoke-voice-output.js --apply --pronunciation --save-preview`。不透過模型捏造可售航班來測試。
 
@@ -97,18 +97,18 @@ SDK沿用後端既有`DIRECT_SPEECH_*`設定，無需修改`.env`或把key放入
 
 ## 資料與知識
 
-城市／機場對照工具`resolve_city_airports`已供自然對話、MCP與intent／planner／flight共用，地理會員不代表DEMO自營／可售航線。預設43城市群組／45機場／122列別名關係。Excel範本：`data\templates\city-airport-mapping.xlsx`；先執行`node scripts\import-city-airports.js <file.xlsx>`整本檢查，明確套用才加`--apply`。支援country ambiguity、已接受集合及排除；公式／巨集／衝突／無效時區／非DEMO參考航線會拒絕，未通過不改舊檔。完整欄位、Python依賴及原子套用界線見[對照維護說明](docs/CITY-AIRPORT-MAPPING.md)。
+城市／機場對照工具`resolve_city_airports`已供自然對話、MCP與intent／planner／flight共用；地理會員不代表任何航空公司的實際營運或可售航線。預設43城市群組／45機場／122列別名關係。Excel範本：`data\templates\city-airport-mapping.xlsx`；先執行`node scripts\import-city-airports.js <file.xlsx>`整本檢查，明確套用才加`--apply`。支援country ambiguity、已接受集合及排除；公式／巨集／衝突／無效時區／非DEMO參考航線會拒絕，未通過不改舊檔。完整欄位、Python依賴及原子套用界線見[對照維護說明](docs/CITY-AIRPORT-MAPPING.md)。
 
 `data\network.json` 為可編輯的生成來源；`npm run generate` 可確定性重新產生：
 
 | 檔案 | 內容 |
 |---|---|
 | `data\generated\airports.json` | 45 個機場、城市、IATA 代碼、IANA 時區 |
-| `data\generated\routes.json` | 86 條有方向性的假設 DEMO 合成直飛路線 |
-| `data\generated\flights.json` | 20,640 個含日期、UTC／當地時間的 DEMO-FLT 航班 |
+| `data\generated\routes.json` | 86 條有方向性的合成示範路線 |
+| `data\generated\flights.json` | 20,640 個含日期、UTC／當地時間的 `DEMO-FLT-*` 合成班次 |
 | `data\generated\fares.json` | 48,000 筆按航班／艙等連結的合成單價與機位數 |
 
-範圍為 **2026-10-16 至 2027-02-12**。所有航班／航線／票價都有`marketingCarrier=DEMO`、`operatingCarrier=DEMO`及`codeshare=false`；後端搜尋、讀offer與reprice再防禦檢核，禁止AE、合作航空及他航營運共掛。**這是合成資料的範圍約束，不是已核驗DEMO營運證明。** 官方route-map本次回NEXT_NOT_FOUND，成田官方動態頁沒有可讀逐班資料；所有保留航線標為`synthetic-demo-not-real-world`，不宣稱真實或完整梅好 Airlines航網。已剔除原松山-羽田、桃園-奧克蘭直飛、桃園-宿霧等未能支持的示範spokes；45機場是地理參考，不代表每座都有可搜路線。班號`DEMO-FLT-*`不是實際DEMO班號，舊22,080筆快照已被取代。
+範圍為 **2026-10-16 至 2027-02-12**。`marketingCarrier=DEMO`與`operatingCarrier=DEMO`只是本專案的合成資料標籤；所有航班／時刻／機位／票價均由本機生成，不來自航空公司或官方航網資料。標記`synthetic-demo-not-real-world`，不表示任何真實航線或航空公司營運；`DEMO-FLT-*`不是實際班號。45個機場僅是地理參考，不代表各機場間有真實或可售航線。
 
 所有票價是 **TWD、每位成人單程、含合成稅費**；總額 = 單價 × 人數，無換匯。非即時、非可售報價。只有示範長途路線有豪華經濟艙；不支援的艙等／機位／路線／日期會回傳空結果，絕不改艙補結果。
 
@@ -130,9 +130,9 @@ SDK沿用後端既有`DIRECT_SPEECH_*`設定，無需修改`.env`或把key放入
 
 ### 四角色知識快照
 
-`data\knowledge\manifest.json` 列出完整15個UTF-8 TXT、50,566,840 bytes的實際檔名、SHA-256及角色對應，未截斷。overview為45機場／86航線摘要；geography保存全部地理／航線欄位；planner-context只有現有示例；flights-01～06保存20,640航班；fares-01～06保存48,000票價及航班關聯。資訊問題如「介紹台北到東京的合成航班時刻資料」直接使用flight agent的file_search，不要求先完成購票欄位；交易仍用本機工具。
+`data\knowledge\manifest.json` 列出完整15個UTF-8 TXT、50,821,970 bytes的實際檔名、SHA-256及角色對應，未截斷。overview為45機場／86航線摘要；geography保存全部地理／航線欄位；planner-context只有現有示例；flights-01～06保存20,640個合成班次；fares-01～06保存48,000筆合成票價及班次關聯。資訊問題如「介紹台北到東京的合成航班時刻資料」直接使用flight agent的file_search，不要求先完成購票欄位；交易仍用本機工具。
 
-只有目前manifest列出的檔案會被上傳；目錄中未列出的舊TXT不屬於目前快照。新版本已改掛新synthetic-demo庫；舊雲端庫保留供稽核、未自動刪除，仍可能產生儲存費。
+只有目前manifest列出的檔案會被上傳；目錄中未列出的舊TXT不屬於目前快照。`meihao-*`是此範本的新部署預設名稱，不表示任何既有雲端資源已重新命名；新快照是否已上傳須以私有環境核驗。
 
 | Agent | 知識檔案 |
 |---|---|

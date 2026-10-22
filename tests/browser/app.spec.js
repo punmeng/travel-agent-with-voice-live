@@ -38,7 +38,7 @@ test('desktop chat-only planning, selection, quote and confirmation with no choi
   await say(page, '確認目前報價');
   await expect(page.locator('#messages')).toContainText('模擬識別碼：SIM-');
   await page.getByRole('link', { name: '開啟模擬結帳（不收款）' }).click();
-  await expect(page).toHaveTitle('模擬結帳 · 梅好旅程');
+  await expect(page).toHaveTitle('模擬結帳 · 梅好 Airlines');
   await expect(page.locator('html')).toHaveAttribute('data-theme', /light|dark/);
   await expect(page.locator('body')).toContainText('不接受信用卡、不扣款、不訂位、不開票');
   await expect(page.locator('input, form')).toHaveCount(0);

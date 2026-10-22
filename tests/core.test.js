@@ -67,7 +67,7 @@ test('persisted dataset exports have complete flight/fare referential integrity'
   const load = name => JSON.parse(readFileSync(new URL(`../data/generated/${name}.json`, import.meta.url)));
   const exportedAirports = load('airports'), exportedRoutes = load('routes'), flights = load('flights'), fares = load('fares');
   assert.deepEqual(exportedAirports.records, airports); assert.deepEqual(exportedRoutes.records, routes);
-  assert.equal(flights.metadata.mock, true); assert.equal(fares.metadata.sourceAccessDate, '2026-10-16');
+  assert.equal(flights.metadata.mock, true); assert.equal(fares.metadata.sourceAccessDate, null);
   const routeMap = new Map(routes.map(r => [r.id, r]));
   const flightMap = new Map(flights.records.map(f => [f.id, f]));
   assert.equal(flightMap.size, flights.records.length); assert.equal(flightMap.size, routes.length * 2 * 120);

@@ -22,7 +22,7 @@ test('vetted exact normalized geographic aliases resolve without inventing DEMO 
   assert.equal(resolveCityAirports({ query: 'Taipei', countryCode: 'JP' }).status, 'not_found');
   const result = lookup('台北');
   assert.equal(result.scope, 'geographic-membership-only');
-  assert.equal(result.syntheticRouteEligibility, 'not-determined');
+  assert.equal(result.routeEligibility, 'not-determined');
   assert.equal(result.provenance.officialNetworkVerified, false);
   for (const airport of result.cities[0].airports) {
     assert.ok(airport.source); assert.equal(airport.updatedAt, '2026-10-19'); assert.equal(airport.timezone, 'Asia/Taipei');
@@ -92,8 +92,8 @@ test('mapping validation rejects duplicate/conflicting aliases, airport metadata
     data => { data.rows[0].city_name = 'conflict'; },
     data => { data.rows[0].alias = 'NRT'; },
     data => data.rows.splice(1, 1),
-    data => { data.routeReferences = [{ origin_iata: 'TPE', destination_iata: 'KIX', marketing_carrier: 'DEMO',
-      operating_carrier: 'AE', valid_from: '2026-11-01', valid_to: '2026-12-01', source: 'not-verified', updated_at: '2026-10-19' }]; }
+    data => { data.routeReferences = [{ origin_iata: 'XXX', destination_iata: 'KIX', marketing_carrier: 'DEMO',
+      operating_carrier: 'SAMPLE', valid_from: '2026-11-01', valid_to: '2026-12-01', source: 'not-verified', updated_at: '2026-10-19' }]; }
   ];
   for (const mutate of invalid) {
     const data = snapshot(); mutate(data); assert.throws(() => validateMappingSnapshot(data));
@@ -119,14 +119,14 @@ from pathlib import Path
 from openpyxl import load_workbook
 from zipfile import ZipFile
 source, directory = sys.argv[1:]
-for kind in ["duplicate", "formula", "timezone", "date", "carrier", "macro", "external"]:
+for kind in ["duplicate", "formula", "timezone", "date", "route", "macro", "external"]:
     book = load_workbook(source)
     sheet = book["CityAirportMapping"]
     if kind == "duplicate": sheet.append([cell.value for cell in sheet[2]])
     if kind == "formula": sheet["C2"] = "=1+1"
     if kind == "timezone": sheet["G2"] = "Fake/Timezone"
     if kind == "date": sheet["I2"] = "2026-02-30"
-    if kind == "carrier": book["RouteReferences"].append(["TPE","KIX","DEMO","AE","2026-11-01","2026-12-01","demo","2026-10-19"])
+    if kind == "route": book["RouteReferences"].append(["XXX","KIX","DEMO","SAMPLE","2026-11-01","2026-12-01","demo","2026-10-19"])
     path = Path(directory) / (kind + ".xlsx")
     book.save(path)
     if kind == "macro":
@@ -135,7 +135,7 @@ for kind in ["duplicate", "formula", "timezone", "date", "carrier", "macro", "ex
         with ZipFile(path, "a") as archive: archive.writestr("xl/_rels/external.rels", '<Relationships><Relationship TargetMode="External" Target="https://invalid.example"/></Relationships>')
 `, path, directory], { encoding: 'utf8', timeout: 30000 });
     assert.equal(fixtures.status, 0, fixtures.stderr);
-    for (const kind of ['duplicate', 'formula', 'timezone', 'date', 'carrier', 'macro', 'external']) {
+    for (const kind of ['duplicate', 'formula', 'timezone', 'date', 'route', 'macro', 'external']) {
       await assert.rejects(importMappingWorkbook(fileURLToPath(new URL(`${kind}.xlsx`, root)), { apply: true, destination: target }));
       assert.equal(await readFile(target, 'utf8'), original, `${kind}: destination unchanged`);
     }

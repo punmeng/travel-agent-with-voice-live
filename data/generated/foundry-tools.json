@@ -6,7 +6,7 @@
       {
         "type": "function",
         "name": "list_airports",
-        "description": "MOCK SYNTHETIC DEMO: list_airports. Marketing and operating carrier DEMO, no AE/partners/codeshares. Hypothetical routes NOT verified DEMO operations. Synthetic TWD adult fares, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
+        "description": "MOCK synthetic demo only: list_airports. DEMO is a placeholder label, not an airline. Routes, times, availability and prices are fictional, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -18,7 +18,7 @@
       {
         "type": "function",
         "name": "resolve_city_airports",
-        "description": "Deterministic geographic city/airport lookup using vetted exact normalized aliases. query and nullable countryCode required. Returns matched/ambiguous/not_found, candidate airports and provenance. City membership NEVER establishes DEMO-operated route eligibility; schedules and fares are separate synthetic tools. No fuzzy guessing.",
+        "description": "Deterministic geographic city/airport lookup using vetted exact normalized aliases. query and nullable countryCode required. Returns matched/ambiguous/not_found, candidate airports and provenance. City membership NEVER establishes airline route eligibility; schedules and fares are separate synthetic tools. No fuzzy guessing.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -52,7 +52,7 @@
       {
         "type": "function",
         "name": "list_airports",
-        "description": "MOCK SYNTHETIC DEMO: list_airports. Marketing and operating carrier DEMO, no AE/partners/codeshares. Hypothetical routes NOT verified DEMO operations. Synthetic TWD adult fares, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
+        "description": "MOCK synthetic demo only: list_airports. DEMO is a placeholder label, not an airline. Routes, times, availability and prices are fictional, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -64,7 +64,7 @@
       {
         "type": "function",
         "name": "resolve_city_airports",
-        "description": "Deterministic geographic city/airport lookup using vetted exact normalized aliases. query and nullable countryCode required. Returns matched/ambiguous/not_found, candidate airports and provenance. City membership NEVER establishes DEMO-operated route eligibility; schedules and fares are separate synthetic tools. No fuzzy guessing.",
+        "description": "Deterministic geographic city/airport lookup using vetted exact normalized aliases. query and nullable countryCode required. Returns matched/ambiguous/not_found, candidate airports and provenance. City membership NEVER establishes airline route eligibility; schedules and fares are separate synthetic tools. No fuzzy guessing.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -98,7 +98,7 @@
       {
         "type": "function",
         "name": "list_airports",
-        "description": "MOCK SYNTHETIC DEMO: list_airports. Marketing and operating carrier DEMO, no AE/partners/codeshares. Hypothetical routes NOT verified DEMO operations. Synthetic TWD adult fares, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
+        "description": "MOCK synthetic demo only: list_airports. DEMO is a placeholder label, not an airline. Routes, times, availability and prices are fictional, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -110,7 +110,7 @@
       {
         "type": "function",
         "name": "resolve_city_airports",
-        "description": "Deterministic geographic city/airport lookup using vetted exact normalized aliases. query and nullable countryCode required. Returns matched/ambiguous/not_found, candidate airports and provenance. City membership NEVER establishes DEMO-operated route eligibility; schedules and fares are separate synthetic tools. No fuzzy guessing.",
+        "description": "Deterministic geographic city/airport lookup using vetted exact normalized aliases. query and nullable countryCode required. Returns matched/ambiguous/not_found, candidate airports and provenance. City membership NEVER establishes airline route eligibility; schedules and fares are separate synthetic tools. No fuzzy guessing.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -142,7 +142,7 @@
       {
         "type": "function",
         "name": "search_flights",
-        "description": "MOCK SYNTHETIC DEMO: search_flights. Marketing and operating carrier DEMO, no AE/partners/codeshares. Hypothetical routes NOT verified DEMO operations. Synthetic TWD adult fares, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
+        "description": "MOCK synthetic demo only: search_flights. DEMO is a placeholder label, not an airline. Routes, times, availability and prices are fictional, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -190,7 +190,7 @@
       {
         "type": "function",
         "name": "get_offer",
-        "description": "MOCK SYNTHETIC DEMO: get_offer. Marketing and operating carrier DEMO, no AE/partners/codeshares. Hypothetical routes NOT verified DEMO operations. Synthetic TWD adult fares, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
+        "description": "MOCK synthetic demo only: get_offer. DEMO is a placeholder label, not an airline. Routes, times, availability and prices are fictional, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -211,7 +211,7 @@
       {
         "type": "function",
         "name": "get_offer",
-        "description": "MOCK SYNTHETIC DEMO: get_offer. Marketing and operating carrier DEMO, no AE/partners/codeshares. Hypothetical routes NOT verified DEMO operations. Synthetic TWD adult fares, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
+        "description": "MOCK synthetic demo only: get_offer. DEMO is a placeholder label, not an airline. Routes, times, availability and prices are fictional, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -230,7 +230,7 @@
       {
         "type": "function",
         "name": "reprice_offer",
-        "description": "MOCK SYNTHETIC DEMO: reprice_offer. Marketing and operating carrier DEMO, no AE/partners/codeshares. Hypothetical routes NOT verified DEMO operations. Synthetic TWD adult fares, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
+        "description": "MOCK synthetic demo only: reprice_offer. DEMO is a placeholder label, not an airline. Routes, times, availability and prices are fictional, never live inventory or payment. Session-scoped offers, 60 tool units maximum.",
         "parameters": {
           "type": "object",
           "properties": {

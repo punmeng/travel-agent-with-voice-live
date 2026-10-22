@@ -11,8 +11,8 @@ export function createMcpServer() {
   for (const [name, schema] of Object.entries(toolSchemas)) {
     server.registerTool(name, {
       description: name === 'resolve_city_airports'
-        ? 'Deterministic geographic city/airport lookup using vetted exact normalized aliases. query and nullable countryCode required. Returns matched/ambiguous/not_found, candidate airports and provenance. City membership NEVER establishes DEMO-operated route eligibility; schedules and fares are separate synthetic tools. No fuzzy guessing.'
-        : `MOCK SYNTHETIC DEMO: ${name}. Marketing and operating carrier DEMO, no AE/partners/codeshares. Hypothetical routes NOT verified DEMO operations. Synthetic TWD adult fares, never live inventory or payment. Session-scoped offers, 60 tool units maximum.`,
+        ? 'Deterministic geographic city/airport lookup using vetted exact normalized aliases. query and nullable countryCode required. Returns matched/ambiguous/not_found, candidate airports and provenance. City membership NEVER establishes airline route eligibility; schedules and fares are separate synthetic tools. No fuzzy guessing.'
+        : `MOCK synthetic demo only: ${name}. DEMO is a placeholder label, not an airline. Routes, times, availability and prices are fictional, never live inventory or payment. Session-scoped offers, 60 tool units maximum.`,
       inputSchema: schema
     }, async args => {
       try {

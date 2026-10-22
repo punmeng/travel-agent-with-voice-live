@@ -42,7 +42,7 @@ export async function ingestKnowledge({ env = process.env, fetcher = fetch, cred
     if (!replaceSnapshot) throw new Error('Different knowledge snapshot exists; explicit migration decision required.');
     state = { projectEndpoint: endpoint, snapshotHash: manifest.snapshotHash, files: {}, stores: {}, agents: {}, inferenceTested: false,
       previousSnapshot: { snapshotHash: state.snapshotHash, stores: state.stores, files: state.files, agents: state.agents },
-      migration: 'synthetic-demo replacement: previous stores retained for audit, not attached to new versions' };
+      migration: 'synthetic-demo-only replacement: previous stores retained for audit, not attached to new versions' };
   }
   const save = () => {
     mkdirSync(new URL('../.foundry/', import.meta.url), { recursive: true });
@@ -129,7 +129,7 @@ export async function ingestKnowledge({ env = process.env, fetcher = fetch, cred
     if (String(latest?.versions?.latest?.version ?? latest?.version) !== String(base.version)) throw new Error(`Concurrent agent change ${name}`);
     const definition = state.previousSnapshot ? {
       ...base.definition, instructions: base.definition.instructions + `
-synthetic-demo更新：僅討論 marketingCarrier=DEMO、operatingCarrier=DEMO、codeshare=false 的假設梅好 Airlines自營合成DEMO；不包含AE、合作航空或他航營運共掛。DEMO欄位不是真實營運證明；所有保留航線尚未逐項核驗。以本版本掛載的新快照為準，舊22,080航班數已被取代，不沿用舊庫或舊班號。航班號DEMO-FLT-*不是實際班號。介紹航線/時刻等知識問題可直接file_search，不要求完整購票欄位；實際合成機位/價格仍工具權威。使用者回答最近機場問題「都可以／沒差」表示接受候選集合，不是未知城市；不要重問已知城市。後端有界比較機場集合，不由模型默選。`,
+synthetic-demo更新：marketingCarrier與operatingCarrier的DEMO值及codeshare=false只標記本專案生成的虛構記錄，不代表任何真實航空公司或營運資格。所有航線、時刻、機位及票價均為合成資料，不來自航空公司或官方航網。以本版本掛載的新快照為準；航班號DEMO-FLT-*僅供示範。介紹路線／時刻等問題可使用file_search，不要求完整購票欄位；合成機位／票價仍以即時工具結果為準。使用者回答最近機場問題「都可以／沒差」表示接受候選集合，不是未知城市；不要重問已知城市。後端有界比較機場集合，不由模型默選。`,
       tools: [...base.definition.tools.filter(tool => tool.type !== 'file_search'),
         { type: 'file_search', vector_store_ids: [state.stores[role].id], max_num_results: 5 }]
     } : buildKnowledgeDefinition(base.definition, state.stores[role].id);

@@ -5,7 +5,7 @@ import { mockSpeechSdk } from './mock-speech-sdk.js';
 import { readPcmWav, replayPcm, resampleMicrophone } from '../public/speech-input.js';
 
 const config = { endpoint: 'https://offline.cognitiveservices.azure.com', resourceId: '/private-resource' };
-const options = speechInputSchema.parse({ stt: 'sdk', sampleRate: 8000, phrases: ['梅好 Airlines', '梅好 Airlines'], silenceMs: 700 });
+const options = speechInputSchema.parse({ stt: 'sdk', sampleRate: 8000, phrases: ['梅好', '梅好'], silenceMs: 700 });
 function setup(extra = {}) {
   const mock = mockSpeechSdk(), events = [], finals = [], failures = [];
   const adapter = createSpeechRecognition(config, options, {
@@ -21,7 +21,7 @@ test('Speech SDK input contract rejects transport/auth overrides, bad segmentati
   for (const bad of [{ endpoint: 'https://evil.invalid' }, { stt: 'sdk', sampleRate: 24000 },
     { stt: 'sdk', silenceMs: 701 }, { stt: 'sdk', chunkBytes: 1281 },
     { stt: 'sdk', phrases: ['x'.repeat(101)] }, { stt: 'sdk', phrases: Array(101).fill('x') },
-    { stt: 'rest', source: 'wav' }, { stt: 'rest', phrases: ['梅好 Airlines'] }]) {
+    { stt: 'rest', source: 'wav' }, { stt: 'rest', phrases: ['梅好'] }]) {
     assert.throws(() => speechInputSchema.parse(bad));
   }
 });
@@ -35,7 +35,7 @@ test('continuous recognizer uses exact endpoint, private Entra auth, PCM format,
     assert.equal(t.configs[0].properties.silence, '700');
     assert.deepEqual(t.streams[0].format, { rate: 8000, bits: 16, channels: 1 });
     assert.equal(t.sdk.SpeechRecognizer.telemetry, false);
-    assert.deepEqual(t.instances[0].phrases, ['梅好 Airlines']);
+    assert.deepEqual(t.instances[0].phrases, ['梅好']);
     const pooled = Buffer.from([99, 99, 1, 2, 3, 4, 99]);
     t.adapter.write(pooled.subarray(2, 6));
     assert.deepEqual([...new Uint8Array(t.streams[0].packets[0])], [1, 2, 3, 4]);

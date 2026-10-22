@@ -18,6 +18,6 @@ assert.equal(s.toolUnits, 0);
 assert.equal(s.quote, null);
 assert.ok(s.cloudEvidence.some(e => e.role === 'flight' && e.fileSearchCalls > 0));
 const report = { checkedAt: new Date().toISOString(), cloudRequests: s.cloudRequests, totalTokens: s.cloudTokens,
-  toolUnits: s.toolUnits, turns, evidence: s.cloudEvidence, currentSnapshot: 'synthetic-demo hypothetical demo, not verified operated routes' };
+  toolUnits: s.toolUnits, turns, evidence: s.cloudEvidence, currentSnapshot: 'fictional synthetic schedules and fares; no airline operations data' };
 await writeFile(new URL('../.foundry/flight-knowledge-smoke.json', import.meta.url), JSON.stringify(report, null, 2) + '\n');
 console.log(JSON.stringify(report, null, 2));

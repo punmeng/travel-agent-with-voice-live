@@ -1,10 +1,10 @@
-# 梅好旅程 AI 旅遊規劃師：系統設計
+# 梅好 Airlines AI 旅遊規劃師：系統設計
 
 **文件快照：2026-10-19。** 本文件描述 `C:\Code\travelagent` 已實作的本機 POC，不是尚未部署的目標架構。主要讀者為應用、AI、資安及方案架構審閱者。
 
 本次收尾狀態與重現方式見[本機版本交接](CURRENT-VERSION.md)：既有3100已運行build `6b6814aca5deb4b2`，收尾不重啟。Hosted Agent官方Python SDK隔離原型不在下述正式應用路徑中；Azure架構／費用只作唯讀評估，登入、持久化月額度、映像及公開部署皆未實作／未核准。Azure工作維持暫停；Git原始碼快照另經使用者核准。
 
-> **核心界線：AI 與語音是真實 Azure 服務；航空庫存、航班時刻、機位、票價及結帳均為合成／模擬。系統不接受卡號、不收款、不訂位、不開票，也不是梅好 Airlines官方服務。**
+> **核心界線：AI 與語音是真實 Azure 服務；航空庫存、航班時刻、機位、票價及結帳均為合成／模擬。系統不接受卡號、不收款、不訂位、不開票，也不是航空公司官方服務。**
 
 ## 1. 摘要與設計取捨
 
@@ -42,7 +42,7 @@
 
 | 項目 | 目前實值／狀態 |
 |---|---|
-| 應用 | `meihao-airlines` 0.1.0；Node.js >=22；目前環境Node22.16.0 |
+| 應用 | `meihao-airlines-travel-planner` 0.1.0；Node.js >=22；目前環境Node22.16.0 |
 | 網址 | `http://127.0.0.1:3100`，只綁loopback |
 | 本機模式 | `.env`為`APP_MODE=foundry`；通用`.env.example`仍預設mock |
 | Foundry專案 | 私人後端設定；此公開快照不含實際專案識別 |
@@ -118,14 +118,14 @@ flowchart LR
 
 ## 5. 四個代理與呼叫協定
 
-| 角色 | 已驗證名稱／版本 | Function權限 | 責任與限制 |
+| 角色 | 此程式的新部署預設名稱 | Function權限 | 責任與限制 |
 |---|---|---|---|
-| intent | `meihao-intent-agent` v6 | list_airports、resolve_city_airports | 第一回合即理解未完整旅行意圖，輸出嚴格JSON；一般理解呼叫`tool_choice=none`，後端同源resolver正規化 |
-| planner | `meihao-travel-planner-agent` v6 | list_airports、resolve_city_airports | 根據天數／步調及已掛載知識規劃；不能保證未核實旅遊資訊 |
-| flight | `meihao-flight-checker-agent` v7 | list_airports、resolve_city_airports、search_flights、get_offer | 介紹合成航班可直接file_search，不等完整trip；可售合成供應仍有界工具 |
-| price | `meihao-price-purchase-agent` v5 | get_offer、reprice_offer | 區分候選／確認價，不執行consent、purchase或任意付款URL |
+| intent | `meihao-intent-agent` | list_airports、resolve_city_airports | 第一回合即理解未完整旅行意圖，輸出嚴格JSON；一般理解呼叫`tool_choice=none`，後端同源resolver正規化 |
+| planner | `meihao-travel-planner-agent` | list_airports、resolve_city_airports | 根據天數／步調及已掛載知識規劃；不能保證未核實旅遊資訊 |
+| flight | `meihao-flight-checker-agent` | list_airports、resolve_city_airports、search_flights、get_offer | 介紹合成航班可直接file_search，不等完整trip；合成供應仍由有界工具查詢 |
+| price | `meihao-price-purchase-agent` | get_offer、reprice_offer | 區分候選／確認價，不執行consent、purchase或任意付款URL |
 
-四者保留file_search及同一GPT-5.4 deployment binding。本次synthetic-demo替換新快照，管理GET比對完整definition，僅替換file_search store及追加DEMO／機場集合界線，保留functions、JSON、reasoning與精簡指令。舊庫不掛新版本，保留供稽核且可能有儲存費。不存在模型可直接使用的consent／purchase工具。
+四者保留file_search及同一GPT-5.4 deployment binding。本次synthetic-demo-only替換新快照，管理GET比對完整definition，僅替換file_search store及追加DEMO／機場集合界線，保留functions、JSON、reasoning與精簡指令。舊庫不掛新版本，保留供稽核且可能有儲存費。不存在模型可直接使用的consent／purchase工具。
 
 一般自然語句先呼叫intent。planner按路由進行規劃；航班與票價的實際搜尋／reprice由後端執行，之後可呼叫專家提供建議，該專家回合tools禁用以避免重複操作。目前flight／price額外建議不另貼成長回覆，對使用者呈現以後端權威內容為準。選班、明確同意與「繼續」不呼叫模型。
 
@@ -168,7 +168,7 @@ intent輸出`{role, reply, slots}`，slots只有指定欄位且每欄為string�
 
 東京可能為成田／羽田，台北可能為桃園／松山。discovery保存每側`AirportChoice {city,candidates,accepted}`及最近真正詢問的`airportQuestion {key,city,candidates}`，不把未選機場當成未知城市。回答「都可以／沒差／任何一個／你幫我選」綁定最近問題、接受完整集合；模型誤放另一Place slot亦由問題state校正，原文證據仍須當則可驗。明確多機場句與「不要松山／不是成田，是羽田」會更新／排除集合；變更集合失效舊報價，重述相同集合不清已選offer。日期、人數、同行者、預算與步調保持。下一個缺項若是另一個已知城市的機場，只問機場、不重問城市。查票意圖保存在`searchRequested`，回答完即續查或問下一項，不重貼保留偏好樣板。
 
-城市地理規則已獨立至`lib\city-airports.js`／`resolve_city_airports`，conversation、MCP及角色functions共用同一handler；不再維持另一份台北／東京別名表。`data\cities.json`預設43城市群組、45機場、122列別名關係，精確NFKC／空白／大小寫比對，非模糊地名猜測。同名跨國回`ambiguous`，下一句國家回答綁定pending city；未知地點回`not_found`並自然詢問。回傳source／updatedAt及`syntheticRouteEligibility=not-determined`，台北都會區服務的機場不代表同一行政區或DEMO航線。
+城市地理規則已獨立至`lib\city-airports.js`／`resolve_city_airports`，conversation、MCP及角色functions共用同一handler；不再維持另一份台北／東京別名表。`data\cities.json`預設43城市群組、45機場、122列別名關係，精確NFKC／空白／大小寫比對，非模糊地名猜測。同名跨國回`ambiguous`，下一句國家回答綁定pending city；未知地點回`not_found`並自然詢問。回傳source／updatedAt及`routeEligibility=not-determined`，台北都會區服務的機場不代表同一行政區或DEMO航線。
 
 Excel範本`data\templates\city-airport-mapping.xlsx`及`import-city-airports.js`提供本機完整驗證／明確apply。alias／country／IATA／timezone／dates／duplicates等全部通過才原子替換`data\city-airport-import.json`，重啟載入；不改network、航班、價格或DEMO搜尋資格。選用RouteReferences僅參考，不將來源文字升格為官方營運證明。無公式／巨集／外部連線執行，整本不送雲端。詳見[維護規格](CITY-AIRPORT-MAPPING.md)。
 
@@ -203,12 +203,12 @@ agent指令先要求以35詞為目標、最多50詞。後端對所有來源的�
 | 資料 | 完整筆數 | 涵蓋／用途 |
 |---|---|---|
 | 機場 | 45 | 人工整理城市、IATA、IANA時區 |
-| 有方向航線 | 86 | 假設synthetic-demo DEMO，非已核驗真實梅好 Airlines航網 |
+| 有方向航線 | 86 | 合成示範資料，並非任何航空公司的實際營運航網 |
 | 含日期航班 | 20,640 | 2026-10-16至2027-02-12，共120天；每日兩個合成出發時段 |
 | 艙等機位／票價 | 48,000 | 每航班／艙等，TWD成人單程含合成稅費；機位0–8 |
-| 知識TXT | 15檔／50,566,840 bytes | 全量無截斷；carrier／來源欄位增加使bytes變大 |
+| 知識TXT | 15檔／50,821,970 bytes | 全量合成快照，依manifest檔案雜湊與byte數核對 |
 
-2026-10-16重新檢查官方route-map回NEXT_NOT_FOUND，成田官方到站頁是動態列表，沒有可讀逐班營運資料。**逐航線DEMO-operated核驗數為0，不宣稱真實／完整官方網路。** 所有保留航線明示`synthetic-demo-not-real-world`。marketing／operating均限定DEMO、codeshare=false，是合成範圍約束而非營運證明；班號`DEMO-FLT-*`不是實際班號。已剔除原松山-羽田、桃園-奧克蘭直飛、桃園-宿霧示範，不混入AE、夥伴或他航營運共掛。地理機場不等於有可售路線。其餘時刻、航程、機位、價格皆合成。未提供指南／網站不虛構，approvedWebsites仍空。
+所有航線、時刻、航程、機位與價格均為本專案合成資料，未使用任何航空公司的營運資料。`marketingCarrier=DEMO`、`operatingCarrier=DEMO`僅為合成標記，不代表實際航空公司或共掛關係；班號`DEMO-FLT-*`僅供示範。地理機場參考不表示存在真實或可售航線。`approvedWebsites`預設為空，未提供的旅遊指南不虛構。
 
 ### 8.2 檔案與代理對應
 
@@ -248,7 +248,7 @@ agent指令先要求以35詞為目標、最多50詞。後端對所有來源的�
 | 工具 | 必要參數 | 權限與行為 |
 |---|---|---|
 | `list_airports` | `{}` | intent／planner／flight，可讀地理參考與metadata |
-| `resolve_city_airports` | `{query, countryCode: null或兩碼}` | intent／planner／flight；只作確切地理對照，回matched／ambiguous／not_found與來源，不承諾DEMO自營資格 |
+| `resolve_city_airports` | `{query, countryCode: null或兩碼}` | intent／planner／flight；只作確切地理對照，回matched／ambiguous／not_found與來源，不推論任何航空公司營運資格 |
 | `search_flights` | origin、destination：已知IATA；date：有效YYYY-MM-DD；travelers：整數1–6；cabin：economy/premium/business；flexibleDays：0或1 | flight；後端內部解析代碼，不要求旅客輸入代碼 |
 | `get_offer` | offerId：UUID | flight／price；只讀此session尚有效offer |
 | `reprice_offer` | offerId：UUID | price；必須已選該offer；清除舊同意並建立新quote |
@@ -471,7 +471,7 @@ VOICE_LIVE_ENDPOINT=https://<resource>.services.ai.azure.com/
 
 | 證據 | 已確認 | 不能推論 |
 |---|---|---|
-| `npm test` | 涵蓋模型raw span尾綴／雙日期／短年份／pending恢復、持續查票任務、城市工具／Excel原子驗證、發音正規化、實際代理進度／舊回合隔離、barge-in及交易不可取消、synthetic-demo、100回合、expiry／consent | 不是所有雲端模型／裝置的全面測試 |
+| `npm test` | 涵蓋模型raw span尾綴／雙日期／短年份／pending恢復、持續查票任務、城市工具／Excel原子驗證、發音正規化、實際代理進度／舊回合隔離、barge-in及交易不可取消、synthetic-demo-only、100回合、expiry／consent | 不是所有雲端模型／裝置的全面測試 |
 | `npm run test:ui` | 8測試通過；桌面／手機、可見詞數、fake mic／transport、15秒clock、代理標籤／過時事件／完成／錯誤／停止、start-during-text／stop-pending／retry及cleanup | fake device不是真人麥克風 |
 | `npm run check` | 最終語法檢查通過；既有preview health為foundry且3100僅一個listener | health不會另外呼叫Azure驗證依賴 |
 | 最後分句調整target回歸 | replies＋voice 8測試通過 | 不是新的大規模效能測試 |

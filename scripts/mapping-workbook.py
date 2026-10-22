@@ -44,7 +44,7 @@ def create(path):
             sheet.add_table(table)
     guide = book.create_sheet("README")
     for line in [
-        "城市／機場地理對照範本；不是已核驗的 DEMO 營運航網。",
+        "城市／機場地理對照範本；不代表任何航空公司的實際營運航網。",
         "一列代表 city_id + alias + airport_iata；同一城市每個 alias 必須列出相同完整機場集合。",
         "所有欄位為文字；日期填 YYYY-MM-DD，不用公式、巨集、外部連結或 Excel 日期數字。",
         "城市別名只按 NFKC／大小寫／空白正規化作確切比對，不自動模糊猜城市。",
@@ -52,11 +52,11 @@ def create(path):
         "機場必須已在 data/network.json，名稱／IANA 時區／國家必須與既有 inventory 一致。",
         "本版每城市最多兩座候選機場，保留既有搜尋 fan-out 上限。",
         "source 保留可追溯來源；預設列是人工整理參考，不是假裝官方資料。",
-        "RouteReferences 可空白；即使填入也只是獨立參考，不建立 DEMO 自營／可售資格，不更動合成 flight generator。",
-        "RouteReferences 行銷與實際營運皆必須 DEMO；不接受 AE、夥伴航空或共掛替代。",
+        "RouteReferences 可空白；填入的資料僅供獨立參考，不建立可售資格或更動合成航班生成器。",
+        "路線參考不驗證航空公司的實際營運資格。",
         "先執行 node scripts\\import-city-airports.js <檔案.xlsx> 檢查，再加 --apply 明確套用。",
         "套用是完整地理對照快照替換，不更動原始 network／班表／價格；服務受控重啟後載入。",
-        "範本不含公式、巨集、樣本 DEMO 航線或個人資料；整份 Excel 不送往 LLM／向量庫。",
+        "範本不含公式、巨集、樣本航空公司航線或個人資料；整份 Excel 不送往 LLM／向量庫。",
     ]:
         guide.append([line])
     guide.column_dimensions["A"].width = 110

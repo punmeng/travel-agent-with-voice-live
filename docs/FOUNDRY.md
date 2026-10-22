@@ -147,22 +147,22 @@ VOICE_LIVE_PERSONAL_VOICE_MODEL=DragonLatestNeural
 
 公開快照不包含上述私人`.foundry`證據檔、實際資源／vector store／voice識別或憑證。管理腳本已移除硬編碼的開發環境endpoint，改要求`FOUNDRY_APPROVED_PROJECT_ENDPOINT`與`FOUNDRY_PROJECT_ENDPOINT`完全一致；預設留白會在任何操作前拒絕。這只保留明確目標核對，不是雲端變更或費用許可，不影響一般chat／Voice runtime。不要為重現本機mock而填入或執行管理腳本。
 
-## 目前部署狀態（2026-10-19；初次部署2026-10-16）
+## 歷史部署說明與此範本的預設名稱
 
-**四個 prompt agents 已成功建立並透過管理 API GET 驗證**，皆綁定既有 `gpt-5.4` 部署：
+私人環境曾建立並管理驗證四個 prompt agents；本文件不公開其原始資源名稱，也不表示本次改名已套用到雲端。下列名稱是目前程式供新部署使用的預設值：
 
-| 角色 | 已建立名稱 | 已驗證版本 | 已驗證工具 |
-|---|---|---|---|
-| intent | `meihao-intent-agent` | `6` | list_airports、resolve_city_airports、file_search；JSON 原文片段理解 |
-| planner | `meihao-travel-planner-agent` | `6` | list_airports、resolve_city_airports、file_search |
-| flight | `meihao-flight-checker-agent` | `7` | list_airports、resolve_city_airports、search_flights、get_offer、file_search |
-| price | `meihao-price-purchase-agent` | `5` | get_offer、reprice_offer、file_search |
+| 角色 | 程式預設名稱 | 範本工具 |
+|---|---|---|
+| intent | `meihao-intent-agent` | list_airports、resolve_city_airports、file_search；JSON 原文片段理解 |
+| planner | `meihao-travel-planner-agent` | list_airports、resolve_city_airports、file_search |
+| flight | `meihao-flight-checker-agent` | list_airports、resolve_city_airports、search_flights、get_offer、file_search |
+| price | `meihao-price-purchase-agent` | get_offer、reprice_offer、file_search |
 
-已將實際名稱與版本寫入 `.env`，管理驗證紀錄保存在 `.foundry\deployment.json`。v2 完成知識掛載後，v3 增加自然對話／低推理強度與 intent JSON 輸出；flight v4 修正推論服務不接受的 sibling-property `$ref`（改為同源內聯 schema），並保留原功能與知識。未建立新資源／模型，未執行模型生成的 evaluation suite。工具為應用執行的 function calls，不是公開 MCP 或自動 Foundry A2A。
+私人 `.env` 與 `.foundry\deployment.json` 不納入公開版。下列名稱變更只更新範本程式碼；本次沒有建立／重新命名雲端資源。部署版本與工具須在目標環境另外核驗。工具為應用執行的 function calls，不是公開 MCP 或自動 Foundry A2A。
 
-先前4/4/5/4由 `scripts\short-replies.js` 核對定義後追加精簡規則；本次5/5/6/5以明確`--replace-snapshot`替換synthetic-demo知識庫，保留模型、functions、reasoning、JSON格式與既有精簡指令，追加synthetic-demo及機場集合界線。新版本／附件已管理GET驗證，`.env`保留live不翻回mock。後端 `lib\replies.js` 才是<=50詞硬限制；超長內容完整分頁、說「繼續」讀取，不花模型費。中文按Intl.Segmenter zh-Hant詞分段；日期／金額／識別碼／URL不可拆，checkout按可見標籤計詞。每個候選／報價完整呈現才開放選擇／同意，voice沿用相同text。
+先前4/4/5/4由 `scripts\short-replies.js` 核對定義後追加精簡規則；本次5/5/6/5以明確`--replace-snapshot`替換synthetic-demo-only知識庫，保留模型、functions、reasoning、JSON格式與既有精簡指令，追加synthetic-demo-only及機場集合界線。新版本／附件已管理GET驗證，`.env`保留live不翻回mock。後端 `lib\replies.js` 才是<=50詞硬限制；超長內容完整分頁、說「繼續」讀取，不花模型費。中文按Intl.Segmenter zh-Hant詞分段；日期／金額／識別碼／URL不可拆，checkout按可見標籤計詞。每個候選／報價完整呈現才開放選擇／同意，voice沿用相同text。
 
-最新intent5的真實機場追問驗收為3次Responses、13,913回報tokens，16/12/12詞；`都可以`保留桃園／松山並前進詢問日期，明確重說兩機場也不丟失，見 `.foundry\airport-dialogue-smoke.json`。新flight v6資訊問答已真實檢索新synthetic-demo庫：2次Responses、14,859回報tokens、1次file_search、零供應工具，回覆46/12詞，見 `.foundry\flight-knowledge-smoke.json`。這些不是所有歷次費用總額。
+最新intent5的真實機場追問驗收為3次Responses、13,913回報tokens，16/12/12詞；`都可以`保留桃園／松山並前進詢問日期，明確重說兩機場也不丟失，見 `.foundry\airport-dialogue-smoke.json`。新flight v6資訊問答已真實檢索新synthetic-demo-only庫：2次Responses、14,859回報tokens、1次file_search、零供應工具，回覆46/12詞，見 `.foundry\flight-knowledge-smoke.json`。這些不是所有歷次費用總額。
 
 原登入身分的 agents/read 403 已在使用者自行完成新登入後解除；重新檢查四個名稱均不存在才進行建立，沒有覆寫任何既有 agent，亦未自行登入／授予角色／切換 subscription。沒有新增 Foundry 資源、project、模型部署或變更地區；後續 Voice Live 僅使用同一既有資源與應用端設定。
 
@@ -170,7 +170,7 @@ VOICE_LIVE_PERSONAL_VOICE_MODEL=DragonLatestNeural
 
 ## 四個既有 prompt agents
 
-2026-10-19城市工具增量更新：intent **6**、planner **6**、flight **7**、price **5**。`scripts\add-city-tool.js`先GET核對四角色最新definition與保存快照完全相同，再只為前三者追加`resolve_city_airports`及地理界線說明；原model、instructions、JSON格式、reasoning、file_search及相同vector stores保持，price沒有新增權限／版本。新版本已管理GET逐一核驗，exact refs保存在`.env`及`.foundry`。較早部署紀錄的5/5/6/5是更新前版本。一般intent仍只摘原文，後端使用同源resolver；不讓LLM直接修改機場state。工具／Excel規格見[城市對照](CITY-AIRPORT-MAPPING.md)。
+曾有城市工具增量更新，私人環境的精確版本與資源識別不在此公開。`scripts\add-city-tool.js`會先核對目標環境既有definition與保存快照，再按其權限規則更新；操作前仍須另行授權。一般intent只摘原文，後端使用同源resolver；不讓LLM直接修改機場state。工具／Excel規格見[城市對照](CITY-AIRPORT-MAPPING.md)。
 
 朗讀另經`lib\speech.js`的確定性繁中發音層後才送入既有`pre_generated_assistant_message`，不是另一個模型答案或未確認支援的SSML。canonical顯示／工具資料不變：字母分開拼、識別碼數字逐個讀零一二，日期／時間及TWD金額按語意讀；安全URL不唸token。50詞仍限制canonical回覆，不截掉展開後的必要事實。已對同一Personal Voice做一次固定中文班號／日期／金額合成，收到923,872 bytes PCM；這是服務輸出證據，不是人工發音正確性或人聲相似度驗證。
 
@@ -232,11 +232,11 @@ foundry 模式會將當回合、最近12筆對話（最多6輪）、探索偏好
 
 ## 靜態知識 vs 動態票價工具
 
-規劃準則與已取得授權的官方航點資料可放 Foundry 檔案／搜尋索引；請保存來源、擷取日期、適用範圍與核驗狀態。`data\network.json` 含未逐項驗證的官方參考入口，不能把示範 routes 當官方事實。
+規劃準則與經核准、可追溯來源的地理參考可放 Foundry 檔案／搜尋索引；請保存來源、擷取日期、適用範圍與核驗狀態。`data\network.json` 的航線與時刻為合成資料，不能當成任何航空公司的營運事實。
 
 網站請先人工核准並提供摘要或授權快照，在 `data\planner-knowledge.json` 的 `approvedWebsites` 加入。此版本不爬網頁。網站／使用者內容都屬不可信資料，不能新增工具、覆寫價格或構成確認。
 
-使用者核准全量合成資料（含票價）與synthetic-demo替換的儲存／embedding索引。新15個TXT共50,566,840 bytes；45地理機場、86有向假設DEMO航線、20,640航班、48,000票價，日期不變，全量無截斷。每筆marketing／operating均DEMO、codeshare=false，**但所有航線仍是synthetic-demo-not-real-world，沒有逐航線官方營運核驗**。已刪原松山-羽田、桃園-奧克蘭直飛、桃園-宿霧示範；不以AE／合作航空補位。舊22,080不能再當目前計數。詳見manifest與`.foundry\knowledge-ingestion.json`。
+合成知識快照由本機manifest產生，包含45個地理參考機場、86條示範路線、20,640個合成班次與48,000筆合成票價；這些內容不來自任何航空公司的營運資料，也不代表真實庫存或價格。每筆marketing／operating均為合成標籤DEMO、codeshare=false；`synthetic-demo-not-real-world`明確標示非真實航線。只有manifest列出的檔案會被索引；詳見本機manifest，任何雲端上傳或更新都需另行核准。
 
 | Agent | 完成索引檔案 | Vector store ID |
 |---|---|---|

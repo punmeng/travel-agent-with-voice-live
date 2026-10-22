@@ -8,7 +8,7 @@
 
 2026-10-22增量：選項4新增REST／SDK可見切換；SDK使用PushAudioInputStream連續辨識、700／1000ms切段與可選phrase list。可由麥克風16kHz或上傳8／16kHz mono PCM16 WAV，以1280 bytes預設區塊實時重播（最多120秒），中間／全部最終片段及timing顯示於UI。callback排隊、worker依序交原四代理／Personal Voice，半雙工、max8待處理片段；session_stopped不當語句提交。此次未修改私人設定、未呼叫Azure，SDK真實認證與音訊需另行驗收。下方較早的啟用／配置與測試數字為歷史快照，不取代實際health及本次runner結果。
 
-套件`meihao-airlines` **0.1.0**，本機POC，非Azure發布或正式發行聲明。本次四架構澄清不增加版本號、不改私人設定、不重啟、不commit，也不執行雲端查詢／認證／推論／合成。
+套件`meihao-airlines-travel-planner` **0.1.0**；梅好 Airlines 是專案虛構品牌，不代表任何客戶或航空公司。本機POC，非Azure發布或正式發行聲明。
 
 ## 四架構：原始碼、配置、live證據分開
 
@@ -35,7 +35,7 @@ Direct Speech只接受精確`DIRECT_SPEECH_ENDPOINT=https://<resource>.cognitive
 
 | 已交付項目 | 行為與限制 |
 |---|---|
-| 繁中聊天 | 非官方梅好 Airlines風格；原生Node HTTP／browser modules，無前端build；自然探索、五天規劃、合成搜尋與文字模擬結帳 |
+| 繁中聊天 | 梅好 Airlines 專案示範品牌；原生Node HTTP／browser modules，無前端build；自然探索、五天規劃、合成搜尋與文字模擬結帳 |
 | 四代理 | 後端協調intent／planner／flight／price，不是自主A2A；工具與旅程權威在後端 |
 | 同源票價工具／MCP | 有界機場／日期搜尋、選班、expiry、reprice、完整呈現、明確同意及冪等模擬確認 |
 | 城市／機場維護 | 43城市群組、45參考機場、122別名關係；多機場／排除／跨國同名澄清；地理不代表可售航線 |
@@ -43,16 +43,16 @@ Direct Speech只接受精確`DIRECT_SPEECH_ENDPOINT=https://<resource>.cognitive
 
 既有agent refs（歷史部署資料，未為本次管理GET核驗）：
 
-| 角色 | 名稱 | 版本 |
+| 角色 | 此程式的新部署預設名稱 | 既有雲端資源是否重新命名 |
 |---|---|---|
-| intent | `meihao-intent-agent` | 6 |
-| planner | `meihao-travel-planner-agent` | 6 |
-| flight | `meihao-flight-checker-agent` | 7 |
-| price | `meihao-price-purchase-agent` | 5 |
+| intent | `meihao-intent-agent` | 否；本次未操作雲端 |
+| planner | `meihao-travel-planner-agent` | 否；本次未操作雲端 |
+| flight | `meihao-flight-checker-agent` | 否；本次未操作雲端 |
+| price | `meihao-price-purchase-agent` | 否；本次未操作雲端 |
 
-使用既有`gpt-5.4` deployment及四個managed vector stores；新環境不能複製名稱就假定有權限。合成資料涵蓋**2026-10-16至2027-02-12**，45機場、86有向假設DEMO路線、20,640 dated flights、48,000 fares；非真實／完整DEMO航網、庫存或價格。`DEMO-FLT-*`不是實際班號；無付款、訂位、開票、退款或卡號／護照收集。15個TXT知識快照由manifest列出，不代替工具查價、reprice及同意；重新上傳／索引須另核准。
+使用既有`gpt-5.4` deployment及四個managed vector stores；新環境不能複製名稱就假定有權限。合成資料涵蓋**2026-10-16至2027-02-12**，45機場、86有向路線、20,640 dated flights、48,000 fares；全數為虛構示範資料，不代表航空公司營運、真實庫存或價格。`DEMO-FLT-*`不是實際班號；無付款、訂位、開票、退款或卡號／護照收集。15個TXT知識快照由manifest列出，不代替工具查價、reprice及同意；重新上傳／索引須另核准。
 
-發音層不改canonical識別碼／價格：`DEMO101`讀「D，E，M，O，一，零，一」、`DEMO0101`保留前置零，`TPE`逐字母；日期、月日區間、時間與TWD按繁中語意，安全URL只說連結在畫面。Personal Voice的Voice Live `name`與Speech SSML `speakerProfileId`不同。歷史取得音訊不等於字母正確性、相似度或新規則已試聽。
+發音層不改canonical識別碼／價格：`DEMO101`逐碼讀出、`DEMO0101`保留前置零，`TPE`逐字母；日期、月日區間、時間與TWD按繁中語意，安全URL只說連結在畫面。Personal Voice的Voice Live `name`與Speech SSML `speakerProfileId`不同。歷史取得音訊不等於字母正確性、相似度或新規則已試聽。
 
 ## 重現與維護
 

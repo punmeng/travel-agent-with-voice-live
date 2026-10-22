@@ -33,7 +33,7 @@ test('knowledge snapshot contains every original record exactly, with role parti
     assert.equal(sha256(content), file.sha256);
     assert.equal(Buffer.byteLength(content), file.bytes);
     assert.match(content, /SYNTHETIC MOCK ONLY/);
-    assert.match(content, /access date 2026-10-16/);
+    assert.match(content, /No airline schedule, operated-route or availability data was used/);
     assert.ok(file.bytes < 10 * 1024 * 1024);
     const records = content.split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line));
     assert.equal(records.length, file.records);
@@ -57,6 +57,8 @@ test('knowledge snapshot contains every original record exactly, with role parti
 });
 
 test('server-side file search output and citations do not become local tools or transaction authority', async () => {
+  const manifest = JSON.parse(readFileSync(new URL('../data/knowledge/manifest.json', import.meta.url)));
+  const firstFareFile = manifest.files.find(file => file.kind === 'fare').filename;
   const session = createSession();
   const config = { endpoint: 'https://example.services.ai.azure.com/api/projects/test', agents: { price: { name: 'price', version: '2' } } };
   const credential = { getToken: async () => ({ token: 'offline' }) };
@@ -64,11 +66,11 @@ test('server-side file search output and citations do not become local tools or 
   const output = [
     { type: 'file_search_call', id: 'fs1', status: 'completed', queries: ['mock fare'], results: [] },
     { type: 'message', content: [{ type: 'output_text', text: '合成票價參考，不是可售報價。', annotations: [
-      { type: 'file_citation', file_id: 'file1', filename: 'fares-01-a380085944cc.txt', index: 0 }
+      { type: 'file_citation', file_id: 'file1', filename: firstFareFile, index: 0 }
     ] }] }
   ];
   const text = await invokeFoundry(config, 'price', session, {}, { credential, fetch: response(output) });
-  assert.match(text, /知識來源（合成示範靜態快照）：fares-01-a380085944cc.txt/);
+  assert.ok(text.includes(`知識來源（合成示範靜態快照）：${firstFareFile}`));
   assert.equal(session.selectedOfferId, undefined);
   assert.equal(session.quote, null);
   await assert.rejects(invokeFoundry(config, 'price', session, {}, { credential, fetch: response([

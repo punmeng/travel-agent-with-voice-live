@@ -1,15 +1,15 @@
 {
   "metadata": {
     "mock": true,
-    "coverage": "僅限 marketingCarrier=DEMO 且 operatingCarrier=DEMO、非共掛的假設合成 DEMO；不是已核驗的梅好 Airlines營運航網。剔除松山-羽田、桃園-奧克蘭直飛、桃園-宿霧等未能支持的示範路線；不以 AE 或合作航空補足。",
+    "coverage": "僅供梅好 Airlines 示範使用的假設合成航線；未使用或代表任何航空公司的真實航班、營運或庫存資料。",
     "marketingCarrier": "DEMO",
     "operatingCarrier": "DEMO",
     "codeshare": false,
     "routeEvidenceStatus": "synthetic-demo-not-real-world",
-    "routeAudit": "2026-10-16 官方 route-map 回應 NEXT_NOT_FOUND；成田官方動態到站頁無可讀逐航班資料。未核驗任何逐航線營運資格。DEMO 欄位僅為合成範圍約束，非營運證明。",
-    "sourceReference": "https://www.example.invalid/tw/zh/discover/map/route-map",
-    "sourceAccessDate": "2026-10-16",
-    "sourceStatus": "已嘗試存取官方來源，未取得可驗證的逐航線 operating carrier inventory；所有保留航線皆為假設 DEMO DEMO，不是官方匯出或已證實的實際 DEMO 航線。",
+    "routeAudit": "路線、時刻及承運欄位皆為本專案合成資料，未依任何航空公司營運資料核驗。",
+    "sourceReference": null,
+    "sourceAccessDate": null,
+    "sourceStatus": "未使用任何航空公司的航班或庫存資料；合成內容不代表實際航線、時刻、營運或可售機位。",
     "staticFacts": "IATA 代碼、城市及 IANA 時區為人工整理的參考資料；未宣稱經官方完整核驗。",
     "syntheticFields": [
       "routes",

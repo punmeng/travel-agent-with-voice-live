@@ -19,7 +19,7 @@
 | `cities` | cityId、cityName、countryCode、候選 airports |
 | `airports` | 每座含 iata、name、IANA timezone、source、updatedAt |
 | `scope` | 固定 `geographic-membership-only` |
-| `syntheticRouteEligibility` | 固定 `not-determined`；不能當作 DEMO 自營資格 |
+| `routeEligibility` | 固定 `not-determined`；地理對照不證明任何航線或航空公司營運 |
 | `provenance` | 本機維護資料；`officialNetworkVerified=false` |
 
 別名只作 Unicode NFKC、大小寫及空白正規化後的完整比對。`Taipei`、`臺北`、`台北`及`Tokyo`、`東京`、`东京`已維護；`Taipie`不模糊改成Taipei。自然對話中的「東京成田或羽田都可以」可由已維護完整詞及明確連接／偏好語句組合；含未識別文字的「東京火星」不偷偷選東京。
@@ -30,7 +30,7 @@ intent、planner、flight可呼叫`resolve_city_airports`；price不新增這項
 
 ## Excel 範本
 
-檔案：`data\templates\city-airport-mapping.xlsx`。Arial字體、表頭／篩選／凍結列；含完整預設地理列、空白RouteReferences表頭及繁中README，**沒有樣本「官方 DEMO 航線」或公式**。
+檔案：`data\templates\city-airport-mapping.xlsx`。Arial字體、表頭／篩選／凍結列；含完整預設地理列、空白RouteReferences表頭及繁中README，**沒有航空公司營運航線樣本或公式**。
 
 | Sheet | 欄位（精確名稱及順序） |
 |---|---|
@@ -39,7 +39,7 @@ intent、planner、flight可呼叫`resolve_city_airports`；price不新增這項
 
 每列是一個city+alias+airport關係。每個別名須重複列出該城市相同完整機場集合；不以某些別名偷偷縮小城市範圍。城市id為小寫英數／連字號，國家及IATA大寫；日期全部以文字填`YYYY-MM-DD`。同城市名稱／國家不可衝突，同國家同別名不可指多城市；重複city+正規化alias+IATA、錯誤日期／IANA時區皆拒絕。
 
-本版只接受既有inventory的機場及相同名稱、國家、時區；若要新增機場或修正權威inventory須另行維護，不能透過Excel悄悄變更生成器。每城市最多兩機場，保留2×2搜尋上限。RouteReferences兩個carrier都必須DEMO；日期有效且不重疊／重複。**RouteReferences只是保存為獨立參考，不會建立／覆寫DEMO營運資格、排程、機位、價格或目前假設合成路線**，來源也不自動升格為已核驗官方事實。
+本版只接受既有inventory的機場及相同名稱、國家、時區；若要新增機場或修正地理inventory須另行維護，不能透過Excel悄悄變更生成器。每城市最多兩機場，保留2×2搜尋上限。RouteReferences只檢查航空公司代碼格式、日期有效性與區間不重疊；**它只是獨立參考，不會建立任何營運資格、排程、機位、價格或目前假設合成路線**，來源也不自動升格為已核驗官方事實。
 
 ## 檢查及套用
 
