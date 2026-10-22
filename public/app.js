@@ -55,7 +55,7 @@ function busy(value) {
   loading = value;
   $('busy').hidden = !value;
   for (const id of ['send', 'new-trip', 'voice', 'retry']) $(id).disabled = value || voiceActive;
-  $('voice-start').disabled = value || voiceActive;
+  $('voice-start').disabled = value || voiceActive || $('voice-start').dataset.available === 'false';
   $('message').disabled = voiceActive;
   $('messages').setAttribute('aria-busy', String(value));
 }
@@ -112,7 +112,7 @@ function showResult(result) {
   const target = message(result.text, 'assistant', result.state.activeAgent);
   scroll();
 }
-createVoiceController({
+const voiceController = createVoiceController({
   agentStatus,
   api, onTranscript: (text, turnId) => { voiceTranscripts.set(turnId, message(text, 'user')); scroll(); }, onResult: showResult,
   onSuperseded: turnId => {
@@ -141,8 +141,8 @@ await run(async () => {
   const data = await api('bootstrap');
   $('mode').textContent = data.mode === 'mock' ? 'AI mock · 旅遊／付款模擬' : 'AI live · 旅遊／付款模擬';
   voiceMessage = data.voice.message;
-  $('voice').querySelector('span').textContent = data.voice.available ? 'Azure Voice Live' : '待設定 Voice Live';
-  $('voice-start').hidden = !data.voice.available;
+  $('voice').querySelector('span').textContent = data.voice.available ? '選擇語音管線' : '語音尚未設定';
+  voiceController.configureModes(data.voice);
   setState(data.state);
   for (const entry of data.history ?? []) message(entry.text, entry.role);
   scroll();

@@ -1,6 +1,90 @@
 # Foundry 四代理與 Voice Live 接線指南
 
-**目前本機版本已收整，Azure工作暫停。** 重現方式與最新驗證狀態見[版本交接](CURRENT-VERSION.md)。下列Hosted Agent段落保留實驗證據，不代表已交付線上版本，也不構成後續付費呼叫、角色授權或部署許可。
+## 四種語音架構
+
+2026-10-21重新定義比較範圍；此節取代舊版「Personal／GPT-Live／Realtime／標準聲音」分類。**順序固定為1 Voice Live、2 Voice Live Realtime 2.1、3 GPT-Live、4直接Speech REST。** 四條都用既有外部GPT-5.4 `intent`／`planner`／`flight`／`price`代理、同一旅程與合成工具，不新增第五個業務代理。
+
+| 模式 | 輸入 → 業務後端 → 輸出 | 交易界線 |
+|---|---|---|
+| 1 `voice-live` | Voice Live `azure-speech` zh-TW STT → 外部同四代理 → `pre_generated` exact-text Personal Voice | 保留原交易guard；本次比較只讀 |
+| 2 `voice-realtime` | Voice Live `gpt-realtime-2.1`音訊原生前端 → 受控`travel_backend` function → 同四代理 → `function_call_output` → Voice Live音訊 | server拒絕選班、重新報價、同意／購買 |
+| 3 `gpt-live` | 獨立`gpt-live-1` API → client delegation → 同四代理 → built-in語音 | 同上；模型字幕／語句不具交易權威 |
+| 4 `speech-direct` | Speech REST短音訊16kHz WAV zh-TW STT → 同四代理 → Speech REST SSML Personal Voice | 同上；不呼叫Voice Live |
+
+原始碼／離線測試、配置可用、雲端驗收須分開報告。舊3100預覽尚未載入本次變更，沒有為此修改私人設定、重啟或呼叫雲端。更新狀態見[版本交接](CURRENT-VERSION.md)，同條件客戶驗收見[四架構比較](VOICE-COMPARISON.md)及[講稿](DEMO-SCRIPT.md)。
+
+### 1｜Voice Live STT → 外部代理 → exact-text
+
+`azure-speech`以`zh-TW`完成轉錄後才交Node既有後端，答案經同一發音正規化一次，再以`pre_generated`確切文字合成。`autoanswers=false`停用自動回答；即使Voice Live session有`gpt-5.4`模型欄，**不能畫成另一次Voice Live GPT-5.4推理**。業務推理由外部同四代理完成。
+
+目前聲音為`azure-personal`／`DragonLatestNeural`。Voice Live的`name`是同資源Personal Voices API的voice資源id，不是顯示名稱或Speech SSML speakerProfileId。原始轉錄與canonical回答有別；發音展開不修改班號、日期、金額或畫面事實。歷史合成證據見[Personal Voice](#personal-voice)，不代表本次四模式已聲學驗收。
+
+Professional Voice設定接點已實作，須明確選`VOICE_LIVE_VOICE_TYPE=azure-custom`，搭配`VOICE_LIVE_CUSTOM_VOICE_NAME`及`VOICE_LIVE_CUSTOM_VOICE_ENDPOINT_ID`，輸出`{"type":"azure-custom","name":"<authorized voice>","endpoint_id":"<authorized endpoint>"}`。只有訓練完成、已授權且同資源的資產才可另行配置；目前**未配置資產，不宣稱已有聲音或可試聽**。
+
+### 2｜Voice Live gpt-realtime-2.1 → function → 外部代理
+
+這是Voice Live原生模型，不是GPT-Live、不是直接Azure OpenAI Realtime API，也不是以Speech轉錄驅動的原管線。**不配置STT transcription**；音訊已進入native context，收到`input_audio_buffer.committed`才送要求function的`response.create`，以`tool_choice: { type: "function", name: "travel_backend" }`指定工具，session設`parallel_tool_calls=false`。可選轉錄事件不是必要觸發條件，不能等一個沒有配置的`transcription.completed`。
+
+只接受completed response內唯一`travel_backend`呼叫；call的status可為`completed`或省略，明確`in_progress`／`incomplete`仍拒絕。允許同一output附帶message／reasoning（status為completed或省略）；這些項目不作後端答案、不顯示或朗讀。核對response／call ID、工具名與strict message schema後才委派既有四代理；重複完成事件不重做委派。不單憑`response.function_call_arguments.done`或`response.output_item.done`開工具。結果用`conversation.item.create`的`function_call_output`回送，再要求Voice Live回音訊；不並發兩個response，無有效委派就逾時／失敗、不fallback。模型只能提出受控旅行需求，不能指定endpoint、工具權限、offer／quote或自授同意。
+
+`VOICE_REALTIME_TOOL`表示本機委派契約拒絕，不代表Foundry已執行後失敗。日誌保留`voiceResponseDetails`的allowlist狀態、output數量、function數量及最多8個item的類型／狀態／工具名是否符合；另以`delegationFailure`區分response未完成、call數量、item狀態、未知output、工具名、call ID、重複call、response關聯、參數型別／長度、JSON及schema錯誤。工具名只記是否`travel_backend`，不輸出任意名稱、參數、逐字稿、模型文字或服務ID。此次以離線事件重現舊gate的過嚴限制；沒有原失敗事件日誌，不能斷言當次是缺item status或額外output，仍須另行核准live驗收。
+
+畫面顯示的委派需求是**模型整理（MODEL-DERIVED），不是使用者原始逐字稿**；原話slot錯誤需由測試講稿人工比對。後端canonical結果為權威，模型朗讀可能改述，不承諾exact-text、50詞或發音展開照念。此處明確選`azure-standard`／`zh-TW-HsiaoChenNeural`：它是Azure TTS輸出，**不能標為模型built-in聲音**。官方模型表列2.1支援Azure TTS／custom，不表示本次改用了Personal／Professional Voice。
+
+原opt-in為`VOICE_LIVE_REALTIME_ENABLED`，endpoint沿用`VOICE_LIVE_ENDPOINT`。本次需求**只接受`gpt-realtime-2.1`**：私人設定仍是`gpt-realtime`，不得自改model、偷偷使用舊model或降級。新版availability須顯示實際`configuredModel=gpt-realtime`與`requiredModel=gpt-realtime-2.1`，並拒絕開始。官方支援不等於當前區域／資源已核驗，另行核准私人配置前保持不可用。
+
+### 3｜GPT-Live-1獨立API與client delegation
+
+獨立`/openai/v1/live/sessions`／`session.start`，需要既有`gpt-live-1`部署與獨立resource root；不是套用Voice Live的session／VAD schema。`GPT_LIVE_ENABLED=false`預設停用，`GPT_LIVE_ENDPOINT`不可猜測為Voice Live或project URL。後端Entra bearer使用`https://ai.azure.com/.default`，瀏覽器不能選endpoint／token／工具。省略`audio.output.voice`使用文件預設built-in `marin`；**目前文件session契約不能替換為Azure Personal Voice**。
+
+`session.delegation.created`只有metadata，不帶task text。現有接線必須由有序、**帶時間戳的使用者轉錄**定位`end_ms <= offset_ms`片段，才交同四代理；不是把原始音訊交給四代理。零碎`input_transcript.delta`本身不跑工具；缺時間、跨界或過時委派拒絕，不用停頓或播放sample數猜位置。重複id不重跑，更正／停止只取消只讀工作，等settle才解鎖。
+
+canonical結果顯示於聊天；`session.commentary.append`供模型參考，不是exact-text TTS。語音／字幕可改述且非權威，不回寫旅程、價格或quote。臺灣華語、臺灣常用詞及繁體中文instructions只是**偏好，不保證臺灣口音或字幕字形**，不可新增未受文件支持的accent／locale欄位。
+
+官方描述timed output audio；既有使用者事件曾出現兩個output時間欄皆缺少。現有相容路徑只在`start_ms`／`end_ms`都不存在時明示`pcm-contiguous`，按PCM samples連續播放，不能還原被省略的靜音。只缺一欄、null、無效值或同連線格式切換仍拒絕。**這不是放寬input transcript／delegation時間契約**，也不是證明音訊／委派全流程成功。
+
+### 4｜直接Speech REST／SDK切換：不經Voice Live
+
+瀏覽器按鍵開始後，本機伺服器聲學VAD自動分段：20ms PCM frame、先校準300ms環境底噪，adaptive RMS起始門檻`max(0.012, noise×3)`／持續門檻`max(0.007, noise×2)`、120ms起音、至少200ms有聲、500ms pre-roll、連續靜音1000ms送出。片段達28秒也自動送出；server硬限30秒。開始後先短暫安靜，待校準再說話；低音量可能漏偵測，突變大聲噪音仍可能誤觸，不宣稱語音分類器。安靜／短聲響只在本機有界記憶體等待，不呼叫Azure；長時間連線仍受原音訊總量上限約束。按「提早送出」為可選備援，flush包含最後partial buffer；不足最小語音不會送空音訊。靜音丟棄未送片段，解除後重新校準。16kHz mono PCM WAV送短音訊STT、固定`zh-TW`，完整結果才交同四代理。答案以SSML `<mstts:ttsembedding speakerProfileId="…">`與base model合成。**沒有Voice Live websocket／session呼叫**，也不是Speech SDK streaming。
+
+REST對照組是**半雙工**：聲學VAD結束輸入後辨識／思考／播放，等排程PCM播完才恢復收音，不以最後一包抵達當作播完。不是semantic VAD、部分轉錄或全雙工barge-in，VAD本身不提供降噪／回音消除。REST官方上限60秒不等於本app硬限30秒；REST沒有phrase list、auto LID或server AEC。`Speech_SegmentationSilenceTimeoutMs=700`不能加到REST請求，也不是語意VAD。停止可清理工作／播放，不回滾完成的工具。
+
+2026-10-22新增B SDK分支，A REST不變。`lib\speech-sdk.js`用continuous `SpeechRecognizer`與`PushAudioInputStream`，`fromEndpoint(wss://<custom-domain>/stt/speech/recognition/conversation/cognitiveservices/v1)`；固定zh-TW，silence property可選700／1000ms，可選phrase list，後端同資源key或Entra授權（Speech scope、`aad#RESOURCE_ID#TOKEN`，更新到recognizer），不向瀏覽器發權杖。SDK telemetry關閉。8／16kHz WAV與16kHz麥克風PCM以預設1280 bytes實時節奏推送，WAV最多120秒，server總音訊／背壓及回合預算不變。
+
+回呼只發ASR事件／排隊，代理及Personal Voice TTS在獨立非同步worker逐段執行；max8排隊、max100 final，超額明確錯誤，不丟失後冒充完成。全部final及數值timing顯示於本次UI，中間結果可更正；一個final只保證ASR片段，不是完整語意回合。`session_stopped`不觸發代理，只代表SDK session結束；檔案EOF才關Push，最多15秒等待尾端事件。半雙工暫停WAV位置／mic送出，播放完成後處理下一final或恢復輸入。不自動fallback A，也未建立MRCP／RTP協定服務。參見README「選項4」；來源為本機GatewayASR範例模式及[JS SpeechConfig](https://learn.microsoft.com/javascript/api/microsoft-cognitiveservices-speech-sdk/speechconfig)、[音訊輸入串流](https://learn.microsoft.com/azure/ai-services/speech-service/how-to-use-audio-input-streams)、[Entra授權](https://learn.microsoft.com/azure/ai-services/speech-service/how-to-configure-azure-ad-auth)。新增路徑只有離線mock驗證，未呼叫Azure。
+
+下列只是後端設定契約，**不是要求本次填入、取得token或執行付費測試**：
+
+| 設定 | 要求 |
+|---|---|
+| `DIRECT_SPEECH_ENABLED` | 預設`false`，獨立opt-in，不受`VOICE_LIVE_ENABLED`代開 |
+| `DIRECT_SPEECH_ENDPOINT` | 精確`https://<resource>.cognitiveservices.azure.com`資源root；不是Voice Live／project／完整STT或TTS URL |
+| `DIRECT_SPEECH_RESOURCE_ID` 或 `DIRECT_SPEECH_KEY` | 前者用Entra，後者resource key；秘密只在後端，不混用／猜測 |
+| `DIRECT_SPEECH_PERSONAL_SPEAKER_PROFILE_ID` | 已核准同資源speakerProfileId **GUID**；不是Voice Live的`name`，不可自行重用／推算 |
+| `DIRECT_SPEECH_PERSONAL_VOICE_MODEL` | `DragonLatestNeural`／`DragonHDOmniLatestNeural`／`PhoenixLatestNeural`其一；是base model，不是resource id |
+
+TTS path為root下`/tts/cognitiveservices/v1`；Entra Speech bearer依文件為`aad#RESOURCE_ID#TOKEN`，或使用resource key。設定／權限／profile映射未核准即不可用；不為了湊齊比較自行查雲端、登入、建立profile或更換資產。
+
+### 共通界線、延遲與來源
+
+四者都要求瀏覽器`noiseSuppression`／`echoCancellation`，屬裝置best-effort；不能外推成server AEC、同等房間效果或聲學驗收。模式1的`azure-speech`官方有`phrase_list`能力，是否本app有接入／實際配置須分開說；其餘模式不假設通用phrase list。固定zh-TW不等於auto LID，native多語能力不等於本app已驗證code-switch。
+
+模式2／3／4唯讀guard在任何選班、reprice、同意、購買前阻擋；請停止語音改用文字。本次四模式同講稿也不在模式1進行交易。模型不可授權工具、改寫合成供應或繞過quote／consent檢核。模式票券／同源cookie／nonce及busy檢核不交給瀏覽器控制；共用記憶體旅程，沒有持久化帳單上限、錄音保存或自動fallback。
+
+量測用共同server單調時鐘分階段記錄，browser顯示的是該server計算的numeric stage durations；另以browser本機時鐘量first packet→playback scheduling delay，**不是實際聲學出聲時間**。GPT metrics區分backend結果前的`frontend_audio`與結果後的`first_audio`，後者也不代表語意答案完成。只留最後一回合numeric IDs／數值metrics於記憶體，沒有持久化報表／下載，不保存音訊／逐字稿為量測資料。**不同host時鐘不相減**；沒有同條件live樣本就不列p50／p95、品質或費用排行。方法與未測結果欄位見[比較指南](VOICE-COMPARISON.md#延遲與結果紀錄)。
+
+官方依據（本次沿用已閱讀文件，沒有新雲端呼叫）：
+
+- [Voice Live模型與Azure TTS／custom支援](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live)
+- [Voice Live how-to：VAD create_response=false與可選transcription](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to)
+- [Voice Live customize：azure-custom endpoint_id與azure-speech phrase_list](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to-customize)
+- [Voice Live事件契約](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-api-reference-2026-07-15)
+- [GPT-Live連線與音訊](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/gpt-live)、[事件契約](https://learn.microsoft.com/en-us/azure/foundry/openai/gpt-live-reference)、[client delegation](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/gpt-live-delegation)
+- [Personal Voice SSML／speakerProfileId／base model](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/personal-voice-how-to-use)
+- [Speech REST短音訊STT：格式、上限與無partial](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-speech-to-text-short)
+- [Speech REST TTS：endpoint與認證](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech)
+
+下列Hosted Agent與過往live紀錄為**歷史範圍證據**，不是本次四架構的雲端驗收或後續付費／授權／部署許可。
 
 ## Hosted Agent 本機介面原型（尚未部署）
 
@@ -59,7 +143,7 @@ VOICE_LIVE_PERSONAL_VOICE_MODEL=DragonLatestNeural
 
 之後切換設定仍需受控重啟（memory-only旅程會消失）；先告知使用者。明確設定`VOICE_LIVE_VOICE_TYPE=azure-standard`才改回預建`zh-TW-HsiaoChenNeural`，不是遇錯自動換聲。四代理、插話中止、50詞及交易確認管線保持不變。
 
-本指南與官方文件存取日期：**2026-10-16**。使用者已明確核准 GPT-5.4 推論／檢索驗收與模擬結帳。**真實自然探索→五天行程→合成來回票→重新報價→明確接受→模擬結帳已通過**，包括實際 file_search；紀錄見 `.foundry\live-smoke.json`。本機 `.env` 現為 foundry；通用範本仍預設離線 mock。
+以下為**2026-10-16～19歷史驗收紀錄**，不涵蓋本次四架構。當時使用者已明確核准GPT-5.4推論／檢索及模擬結帳；自然探索→五天行程→合成來回票→重新報價→明確接受→模擬結帳通過，包括實際file_search，紀錄見`.foundry\live-smoke.json`。本機`.env`為foundry，通用範本仍預設離線mock；本次沒有重新核驗這些私人證據。
 
 公開快照不包含上述私人`.foundry`證據檔、實際資源／vector store／voice識別或憑證。管理腳本已移除硬編碼的開發環境endpoint，改要求`FOUNDRY_APPROVED_PROJECT_ENDPOINT`與`FOUNDRY_PROJECT_ENDPOINT`完全一致；預設留白會在任何操作前拒絕。這只保留明確目標核對，不是雲端變更或費用許可，不影響一般chat／Voice runtime。不要為重現本機mock而填入或執行管理腳本。
 
@@ -192,7 +276,9 @@ P0 到**模擬結帳連結**，不實際訂位、開票或付款。真實Pay/Ser
 
 冪等鍵的重試只回傳原模擬收據；同一確認價不重複建立。此示範不保留真實訂位或付款系統的交易紀錄；所有 session 都是記憶體資料。
 
-## Voice Live：真正音訊與四代理共用流程
+## Voice Live：模式1既有流程與歷史驗收
+
+本節只描述模式1及過往核准的證據；**不是四模式共通音訊格式、插話或AEC保證**。本次四架構／配置gate以[上方新定義](#四種語音架構)為準，不以本節歷史用量授權新呼叫。
 
 官方文件已查閱：
 
@@ -202,7 +288,7 @@ P0 到**模擬結帳連結**，不實際訂位、開票或付款。真實Pay/Ser
 - [Voice Live 2026-07-15 API reference](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-api-reference-2026-07-15#responsecreate)
 - [Foundry function calling](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/function-calling)
 
-使用者已明確核准本次 Voice Live 接線與有限用量驗收。現有資源管理查詢確認 `eastus2`、AIServices、公開網路可用；沒有新建資源／模型、授權角色或更換訂閱。
+使用者過往曾核准模式1接線及有限用量驗收；當時資源管理查詢確認`eastus2`、AIServices、公開網路可用，沒有新建資源／模型、授權角色或更換訂閱。本次未呼叫管理API。
 
 官方 prompt-agent 直連使用 `agent_name/project_name/agent_version`，不同於 classic `agent_id/project_id`。本應用不是單一 prompt agent：四角色協調、工具、交易與冪等都在本機。直接接其中一個會繞過既有旅程狀態；因此採**明確的伺服器控制 turn bridge**，保留所有原有代理與知識版本，未另外部署語音 agent。
 
@@ -210,27 +296,27 @@ P0 到**模擬結帳連結**，不實際訂位、開票或付款。真實Pay/Ser
 瀏覽器麥克風 → AudioWorklet PCM16/24kHz → 同源 WebSocket
   → 後端 Entra 驗證 → Azure Voice Live 語音辨識
   → 相同 chat(session, ...) → GPT-5.4 四角色、知識與權威工具
-  → 對話文字顯示／context acknowledgment
+  → 送出對話文字（瀏覽器ack僅更新下一回合context，不阻塞合成）
   → Voice Live pre_generated_assistant_message → PCM → 瀏覽器播放
 ```
 
-Voice Live 使用 `model=gpt-5.4`、`api-version=2026-07-15`，但 `create_response=false`，不自行生成第二個答案。`response.create.response.pre_generated_assistant_message` 是官方支援的確切文字朗讀，不是「請模型照念」提示。輸入為 `azure-speech`、`zh-TW`，輸出目前明確設定為既有Personal Voice／`DragonLatestNeural`；預建`zh-TW-HsiaoChenNeural`需明確設定使用，不作錯誤fallback。本專案不錄製、上傳或複製聲音；沒有 browser SpeechRecognition／speechSynthesis。
+模式1 Voice Live使用`model=gpt-5.4`、`api-version=2026-07-15`，但`autoanswers=false`／VAD `create_response=false`，不自行生成第二個推理答案。`response.create.response.pre_generated_assistant_message`是官方支援的確切文字朗讀，不是「請模型照念」提示。輸入為`azure-speech`、`zh-TW`，輸出為既有Personal Voice／`DragonLatestNeural`；不遇錯fallback。本專案不建立／複製聲音或保存錄音，沒有browser SpeechRecognition／speechSynthesis。模式4的SSML是另一條Speech REST管線，不套用此Voice Live schema。
 
 Voice Live標題旁代理標籤使用後端真實意圖／專責階段事件；同session文字則查詢只讀progress endpoint。不增加推論或語音用量、不把標籤送去合成、不把Voice Live當第五代理。role只允許intent／planner／flight／price，turnId／requestId隔離舊事件，完成、錯誤、停止有明確重設；不改任何已部署agent指令或工具權限。
 
-官方通常建議瀏覽器使用 WebRTC；這個本機POC用受支援的WebSocket PCM路徑，方便後端限制音訊／事件與同session控制。TCP與非串流GPT turn延遲仍高於WebRTC。現在thinking／speaking皆持續收音；speech_started清播放並取消上游合成，完整轉錄才取代只讀模型工作。AbortSignal取消舊fetch，最多一個待辦更正、總訊息2,000字元；等舊工作安全settle再序列執行合併上下文，過時結果不顯示／朗讀。已開始的選班／重報價／確認不強制中斷、不自動重試，補充內容排在完成後且不繼承未看過的quote同意。browser echoCancellation加官方server_echo_cancellation降低自我回授；未驗證真人房間回音品質，建議耳機。
+官方通常建議瀏覽器使用WebRTC；此模式1本機POC採WebSocket PCM方便後端限制事件與同session控制。沒有同條件量測，不作WebSocket／WebRTC延遲排名。模式1 thinking／speaking持續收音；speech_started清播放並取消上游合成，完整轉錄才取代只讀模型工作。AbortSignal取消舊fetch，最多一個待辦更正、總訊息2,000字元；等舊工作settle再序列處理，過時結果不顯示／朗讀。已開始的交易不強制中斷、不自動重試、不假回滾。browser echoCancellation與模式1 server_echo_cancellation設定不代表真人房間回音已驗收，也不能外推為模式4 server AEC；建議耳機並另行實測。
 
 ```dotenv
 VOICE_LIVE_ENABLED=true
 VOICE_LIVE_ENDPOINT=https://<resource>.services.ai.azure.com/
 ```
 
-`VOICE_LIVE_PROJECT_NAME/AGENT_NAME` 舊保留欄位不使用，不應填成直連單一 agent。`.env.example` 預設 false；即使 APP_MODE=mock，單獨啟用語音也仍會產生 Azure 語音用量費，只有 false 才完全停用語音。`GET /api/bootstrap` 的 available 表示設定可建立連線，不是預先保證雲端健康；實際拒絕會顯示錯誤。
+`VOICE_LIVE_PROJECT_NAME/AGENT_NAME`舊欄位不使用，不填成直連單一agent。新四架構完全關閉須同時關閉`VOICE_LIVE_ENABLED`、`VOICE_LIVE_REALTIME_ENABLED`、`GPT_LIVE_ENABLED`及`DIRECT_SPEECH_ENABLED`；它們各自opt-in，Voice Live enabled不是總開關。舊checkout若仍有`VOICE_LIVE_STANDARD_ENABLED`也保持false，它不是新第四模式。即使`APP_MODE=mock`，另啟用語音仍可能產生Azure用量費。`GET /api/bootstrap` availability只是配置gate，不保證雲端健康；Realtime 2.1須同時揭露實際configuredModel與requiredModel，配置舊model就拒絕。
 
 - 使用者按開始後才要求麥克風；AudioContext 必須支援24kHz，建議新版 Edge／Chrome。介面顯示連線、聆聽、思考、朗讀、靜音與錯誤；停止／關閉／pagehide會結束tracks、worklet、播放sources、AudioContext與sockets。
 - `POST /api/voice/session` 先驗證同源cookie/session與顯示context，再回30秒一次性**本機**nonce；透過WebSocket subprotocol攜帶，不放URL／localStorage。它不是Azure credential，不能用於其他session。所有Entra bearer只在後端上游header。
 - WebSocket升級驗證Host、Origin、session與nonce，僅接受PCM與mute/stop/displayed事件；瀏覽器不能傳endpoint、agent、instructions或response.create。CSP仍self-only，Permissions Policy只有啟用時允許self microphone。
-- 移除五分鐘timer；文字／語音／續讀共用100完成回合，voice每連線最多100轉錄。每旅程3次票券、全域4連線；input576MB（100×120秒PCM，包含靜音等待資料）、output288MB（100×60秒PCM）、每秒144KB突發及背壓維持。20秒session設定timeout與供應商／網路限制仍存在，不自動重連。這些不是帳單硬上限。
+- 移除五分鐘timer；文字／語音／續讀共用100完成回合，voice每連線最多100轉錄。不限制每旅程累計票券次數，同旅程限單一連線、全域4連線；input576MB（100×120秒PCM，包含靜音等待資料）、output288MB（100×60秒PCM）、每秒144KB突發及背壓維持。20秒session設定timeout與供應商／網路限制仍存在，不自動重連。這些不是帳單硬上限。
 - 超過15秒的文字／語音模型等待顯示中性狀態，不另起朗讀／模型／工具、不計回合；更正按最新轉錄重新計時，完成／失敗／stop／retry清掉timer。文字pending時語音開始停用；語音中的新轉錄序列排隊／更正，不執行平行session寫入。停止音軌不提前釋放仍在工作的鎖。描述在按鈕下方折疊，診斷ID不擠在主錯誤文字。
 
 2026-10-16新增真實合成音訊驗收`.foundry\voice-interrupt-smoke.json`：十月原請求注入25秒延遲，等待中說十一月中，取消原fetch、只交付最新答案、台北／大阪保留，產生373,800 bytes真實Voice Live回答；接續「11月15號出發」得到2026-11-15。不是真人mic／喇叭驗收。`.foundry\natural-flight-flow-smoke.json`以六個自然回合、7次Responses／40,546回報tokens完成兩機場皆可→11/15去→11/20回→2人→明確經濟艙，自動查出DEMO合成來回時間；最後45詞，不要求再次下搜尋命令。上述是限定驗收，不是所有歷次用量總額。
@@ -239,10 +325,10 @@ VOICE_LIVE_ENDPOINT=https://<resource>.services.ai.azure.com/
 - 語音與文字不平行寫同一旅程；語音啟用時composer停用，但文字結果與報價持續顯示。停止後可繼續文字或重新開始語音，狀態共用。尚未acknowledge的報價、舊清單、過期／改價及含糊同意均不成交；checkout仍純模擬。
 - 真實雲端測試已通：Azure合成「我想去日本玩幾天。」120,600 bytes PCM → Voice Live正確中文轉錄 → 同一GPT-5.4流程保留日本偏好、零航班搜尋 → 800,400 bytes實際答覆音訊。紀錄 `.foundry\voice-smoke.json`，明確為**合成測試、非真人麥克風**。
 
-重跑付費驗收：`npm run test:voice:live`，只在明確授權時執行；一般 `npm test`／`npm run test:ui`不呼叫Azure。人工驗收請按開始、允許麥克風、說一句旅行想法，核對轉錄與朗讀，再測靜音／停止、文字接續。詳細五至八分鐘流程見 [示範講稿](DEMO-SCRIPT.md)。
+模式1歷史付費smoke重跑命令為`npm run test:voice:live`，僅另行明確授權才執行，不能拿它代表四架構已測；一般`npm test`／`npm run test:ui`不呼叫Azure。本次未執行付費命令。四架構人工驗收用[同講稿](DEMO-SCRIPT.md)與[量測計畫](VOICE-COMPARISON.md)，先滿足配置gate再測。
 
 ## 驗收與上線前限制
 
-離線測試覆蓋完整知識筆數／hash、四角色、MCP、來回日期與總額／艙等、探索偏好、原文證據、舊報價／否定同意／連結到期與他人session，以及語音橋接／權限／停止清理。真實驗收已呼叫全部四個agents，觀察到內建file_search，成功完成七句對話至模擬結帳；Voice Live實際合成音訊迴路亦通過。可在核准範圍執行付費smoke，但不屬一般 `npm test`。真人麥克風／喇叭、真實航空庫存、實際付款及生產負載均未驗證。
+既有離線測試覆蓋完整知識筆數／hash、四角色、MCP、日期／總額／艙等、探索偏好、原文證據、報價／同意／到期、session隔離及語音橋接／清理；本次新實作須看本次runner結果，不能沿用舊數字。過往真實驗收曾呼叫全部四agents／file_search、七句對話至模擬結帳，並通過模式1合成音訊迴路；這些不是新Realtime 2.1或Speech REST驗收。真人麥克風／喇叭、四模式同條件品質／延遲、真實航空庫存／付款及生產負載均未驗證。
 
 公開部署前還必須增加正式登入／session ownership、持久化與併發控制、分散式限流與總費用控管、CORS／CSRF／HTTPS 政策、稽核與真實航空資料授權、實際交易與退款狀態機。此服務只為本機 POC，請勿直接曝光。

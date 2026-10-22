@@ -1,17 +1,22 @@
 import { test, expect } from '@playwright/test';
 
-async function enabled(page) {
+async function enabled(page, mode) {
   await page.route('**/api/bootstrap', async route => {
     const response = await route.fetch(), data = await response.json();
     data.voice = { available: true, message: 'Voice Live test transport' };
+    if (mode) data.voice.modes = { [mode]: { available: true,
+      requiredModel: 'gpt-realtime-2.1', configuredModel: 'gpt-realtime-2.1' } };
     await route.fulfill({ response, json: data });
   });
 }
-test('microphone user gesture, transcript rendering, mute, stop and track/context/socket cleanup', async ({ page }) => {
-  await enabled(page);
-  await page.route('**/api/voice/session', route => route.fulfill({ json: {
+for (const mode of [undefined, 'voice-realtime']) {
+test(`microphone user gesture, transcript rendering, mute, stop and track/context/socket cleanup (${mode ?? 'legacy'})`, async ({ page }) => {
+  await enabled(page, mode);
+  await page.route('**/api/voice/session', route => {
+    expect(route.request().postDataJSON().mode).toBe(mode);
+    return route.fulfill({ json: {
     path: '/api/voice/stream', protocol: 'journey-voice', nonce: 'a'.repeat(64)
-  } }));
+  } }); });
   await page.addInitScript(() => {
     const NativeContext = window.AudioContext;
     window.__voiceContexts = []; window.__voiceTracks = []; window.__microphoneCalls = 0; window.__stoppedPlayback = 0;
@@ -48,6 +53,8 @@ test('microphone user gesture, transcript rendering, mute, stop and track/contex
   await page.goto('/');
   await expect(page.locator('#send')).toBeEnabled();
   await page.locator('#voice').click();
+  await expect(page.locator('#voice-mode option')).toHaveCount(4);
+  if (mode) await page.locator('#voice-mode').selectOption(mode);
   await expect(page.locator('#voice-agent')).toHaveText('等待對話');
   expect(await page.evaluate(() => window.__microphoneCalls)).toBe(0);
   await page.locator('#voice-start').click();
@@ -130,6 +137,7 @@ test('microphone user gesture, transcript rendering, mute, stop and track/contex
   await expect(page.locator('#voice-status')).toContainText('已停止收音');
   expect(await page.evaluate(() => window.__voiceTracks.every(t => t.readyState === 'ended'))).toBe(true);
 });
+}
 test('microphone denial is explicit and cleanup restores text; no browser speech substitute', async ({ page }) => {
   await enabled(page);
   await page.addInitScript(() => {

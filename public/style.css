@@ -75,6 +75,9 @@ h3 { font-size: 16px; font-weight: 600; }
 .top-note { margin-left: auto; color: var(--cp-text-muted); font-size: 12px; }
 .quiet { background: var(--cp-bg-elevated); }
 .layout { max-width: 840px; margin: auto; }
+.layout.expanded { max-width: 1280px; }
+.conversation-tools { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 4px 20px; font-size: 12px; }
+.conversation-tools button { font-size: 12px; }
 .rail { padding: 40px 28px; display: flex; flex-direction: column; gap: 32px; border-right: 1px solid var(--cp-border); }
 .eyebrow { font-size: 10px; letter-spacing: .17em; font-weight: 600; color: var(--cp-accent); margin-bottom: 12px; }
 h1 { font-size: 32px; font-weight: 400; line-height: 1.6; letter-spacing: .08em; margin-bottom: 16px; white-space: nowrap; }
@@ -103,7 +106,7 @@ h1 span { color: var(--cp-accent); }
 .message.user { margin-left: 32px; padding: 8px 12px; border-radius: .625rem; background: var(--cp-accent-soft); }
 .message.user .speaker { color: var(--cp-accent); }
 .message .muted { font-size: 12px; margin-top: 12px; }
-.composer-area { padding: 12px 20px; border-top: 1px solid var(--cp-border); background: var(--cp-bg-elevated); }
+.composer-area { padding: 12px 20px; border-top: 1px solid var(--cp-border); background: var(--cp-bg-elevated); flex-shrink: 0; max-height: 65%; overflow-y: auto; }
 .composer { border: 1px solid var(--cp-border-strong); display: flex; align-items: flex-end; gap: 12px; padding: 12px; border-radius: 16px; background: var(--cp-surface); }
 .composer textarea { width: 100%; resize: none; background: var(--cp-surface); color: var(--cp-text); border: none; padding: 4px; font-size: 13px; }
 .composer button { background: var(--cp-accent); color: var(--cp-accent-fg); border-color: var(--cp-accent); width: 44px; flex-shrink: 0; font-size: 22px; }
@@ -120,15 +123,25 @@ label { display: block; color: var(--cp-text-muted); font-size: 12px; margin-bot
 .trace { color: var(--cp-text-soft); font-size: 10px; margin-top: 12px; }
 dialog { color: var(--cp-text); background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; max-width: 520px; padding: 28px; }
 dialog::backdrop { background: var(--cp-overlay); }
-#voice-dialog { padding: 12px; margin-bottom: 12px; border: 1px solid var(--cp-border); border-radius: .625rem; background: var(--cp-surface); }
+#voice-dialog { padding: 12px; margin-bottom: 12px; border: 1px solid var(--cp-border); border-radius: .625rem; background: var(--cp-surface); height: 260px; min-height: 160px; max-height: 45dvh; overflow: auto; resize: vertical; }
 #voice-dialog p { font-size: 11px; margin-block: 4px; }
 #voice-dialog .eyebrow { margin: 0; }
 .voice-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .voice-heading h3 { margin: 0; }
+.voice-heading label { display: flex; align-items: center; gap: 8px; margin: 0 0 0 auto; }
+.voice-heading input { width: 100px; accent-color: var(--cp-accent); }
+#speech-options { border: 1px solid var(--cp-border); border-radius: .625rem; padding: 8px; margin-block: 8px; }
+#speech-options label { margin: 4px 0; }
+#speech-options input, #speech-options select, #speech-options textarea { max-width: 100%; background: var(--cp-surface); color: var(--cp-text); border: 1px solid var(--cp-border); border-radius: .625rem; }
+#speech-options textarea { display: block; width: 100%; }
+#speech-finals, #speech-events { max-height: 180px; overflow: auto; padding-left: 24px; overflow-wrap: anywhere; font-size: 12px; }
+.voice-mode-label { margin: 8px 0 4px; }
+#voice-mode { max-width: 100%; padding: 8px; border: 1px solid var(--cp-border); border-radius: .625rem; background: var(--cp-surface); color: var(--cp-text); font: inherit; font-size: 12px; }
+#voice-caption { overflow-wrap: anywhere; }
 .agent-badge { padding: 2px 8px; border: 1px solid var(--cp-border); border-radius: .625rem; color: var(--cp-text-muted); background: var(--cp-surface-soft); font-size: 11px; }
 .agent-badge[data-status="processing"] { color: var(--cp-accent); border-color: var(--cp-accent); background: var(--cp-accent-soft); }
 #voice-status { color: var(--cp-accent); font-weight: 600; }
-.voice-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 8px; }
+.voice-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 8px; padding-block: 4px; position: sticky; bottom: 0; background: var(--cp-surface); }
 .voice-controls button { font-size: 12px; padding: 6px 10px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 [hidden] { display: none !important; }

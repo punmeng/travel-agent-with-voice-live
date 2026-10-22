@@ -98,7 +98,14 @@ test('HTTP chat-only selection/reprice/confirmation, isolation and explicit erro
     const html = await fetch(base); assert.match(html.headers.get('content-security-policy'), /sha256-/);
     assert.match(await html.text(), /Talk to agent/);
     const page = await (await fetch(base)).text();
-    assert.doesNotMatch(page, /<select|type="checkbox"|data-prompt|id="purchase"|class="card/);
+    const speechOptions = page.match(/<fieldset id="speech-options"[^>]*>[\s\S]*?<\/fieldset>/)?.[0];
+    assert.ok(speechOptions, 'SDK input settings must remain inside the voice fieldset');
+    assert.deepEqual([...speechOptions.matchAll(/<select id="([^"]+)"/g)].map(match => match[1]),
+      ['speech-stt', 'speech-source', 'speech-silence']);
+    const chatOnlyPage = page.replace(speechOptions, '');
+    assert.equal((chatOnlyPage.match(/<select\b/g) ?? []).length, 1, 'only voice settings may add selectors');
+    assert.match(page, /<select id="voice-mode"/);
+    assert.doesNotMatch(chatOnlyPage.replace(/<select\b[^>]*>[\s\S]*?<\/select>/g, ''), /<select|type="checkbox"|data-prompt|id="purchase"|class="card/);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 test('Foundry transport uses configured agent reference; gated tool loop fails closed', async () => {

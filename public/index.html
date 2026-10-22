@@ -25,13 +25,50 @@
   <main class="layout">
     <section class="conversation" aria-label="旅程對話">
       <p class="notice">非官方示範 · 航班／票價皆合成，不訂位、不收款。</p>
+      <div class="conversation-tools">
+        <div>目前代理：<span id="voice-agent" class="agent-badge" role="status" aria-live="polite" aria-atomic="true">等待對話</span></div>
+        <button id="conversation-expand" aria-pressed="false">放大對話寬度</button>
+      </div>
       <div id="messages" class="messages" role="log" aria-live="polite" aria-label="對話訊息">
         <article class="message assistant"><div><p class="speaker">旅程助手</p><p>想去哪裡走走？還沒決定也可以一起聊。請勿提供護照或信用卡資料。</p></div></article>
       </div>
       <div id="busy" class="busy" role="status" hidden>旅程團隊正在整理您的提案…</div>
       <div id="error" class="error" role="alert" hidden><span></span><button id="retry">重試</button></div>
       <div class="composer-area">
-        <section id="voice-dialog" aria-labelledby="voice-title" hidden><div class="voice-heading"><h3 id="voice-title">Azure Voice Live</h3><span id="voice-agent" class="agent-badge" role="status" aria-live="polite" aria-atomic="true">等待對話</span></div><p id="voice-status" role="status" aria-live="polite">尚未收音</p><p class="muted">按開始即將麥克風音訊傳至 Azure。</p><div class="voice-controls"><button id="voice-start" class="primary">開始語音</button><button id="voice-mute" disabled aria-pressed="false">靜音</button><button id="voice-stop" disabled>停止語音</button><button id="close-voice">關閉，繼續文字規劃</button></div><details id="voice-error" hidden><summary>診斷資訊</summary><p id="voice-error-details"></p></details><details class="muted"><summary>語音與模擬資料說明</summary><p id="voice-message"></p><p>請先讀完報價再確認；不收款、不訂位、不開票。</p></details></section>
+        <section id="voice-dialog" aria-labelledby="voice-title" hidden>
+          <div class="voice-heading"><h3 id="voice-title">Azure Voice Live</h3><label for="voice-panel-height">面板高度 <input id="voice-panel-height" type="range" min="160" max="440" step="20" value="260" aria-label="語音面板高度"></label></div>
+          <label class="voice-mode-label" for="voice-mode">開始前選擇語音管線（停止後才可切換）</label>
+          <select id="voice-mode" aria-describedby="voice-comparison voice-availability">
+            <option value="voice-live">1 · Voice Live · GPT-5.4 + 既有聲音</option>
+            <option value="voice-realtime">2 · Voice Live · gpt-realtime-2.1 + Azure Neural聲音</option>
+            <option value="gpt-live">3 · GPT-Live · gpt-live-1 + 內建聲音</option>
+            <option value="speech-direct">4 · 直接Azure Speech · STT → 四代理 → Personal Voice</option>
+          </select>
+          <fieldset id="speech-options" hidden>
+            <legend>選項4 · 辨識方式對照</legend>
+            <label for="speech-stt">STT方式
+              <select id="speech-stt"><option value="rest">A · REST API（既有本機VAD對照組）</option><option value="sdk">B · Speech SDK（連續串流辨識）</option></select>
+            </label>
+            <div id="speech-sdk-options" hidden>
+              <label for="speech-source">串流來源 <select id="speech-source"><option value="microphone">即時麥克風（16 kHz）</option><option value="wav">本機WAV即時速率重播（8／16 kHz）</option></select></label>
+              <label for="speech-silence">SDK停頓切段 <select id="speech-silence"><option value="700">700 ms</option><option value="1000">1000 ms</option></select></label>
+              <label for="speech-chunk">每包位元組 <input id="speech-chunk" type="number" min="320" max="6400" step="2" value="1280"></label>
+              <label for="speech-phrases">可選phrase list（每行一詞，最多100詞）<textarea id="speech-phrases" rows="2" maxlength="10100"></textarea></label>
+              <label id="speech-wav-label" for="speech-wav" hidden>PCM16、單聲道WAV（8／16 kHz，最多120秒）<input id="speech-wav" type="file" accept=".wav,audio/wav"></label>
+              <p>開始才會傳送至Azure並可能計費。WAV僅在記憶體讀取；不要求麥克風權限。此為PCM串流模擬，非MRCP／RTP；最終片段不等於語意完整回合。半雙工等待／朗讀時暫停重播。</p>
+            </div>
+          </fieldset>
+          <section id="speech-asr" hidden aria-label="SDK串流辨識事件">
+            <p id="speech-replay-progress"></p><p id="speech-interim" role="status" aria-live="polite"></p>
+            <details open><summary>SDK最終辨識與事件（本次連線，最多100片段／最近200事件）</summary><ol id="speech-finals" aria-live="polite"></ol><ol id="speech-events" aria-live="polite"></ol></details>
+          </section>
+          <details class="muted"><summary>管線說明</summary><p id="voice-comparison"></p></details><p id="voice-availability" role="status" aria-live="polite"></p>
+          <p id="voice-status" role="status" aria-live="polite">尚未收音</p>
+          <p id="voice-caption" class="muted" hidden></p>
+          <details class="muted"><summary>本次階段計時（非品質排名）</summary><p id="voice-metrics">尚無量測；只在記憶體保留數值，不儲存音訊或逐字稿。各時鐘分開量測。</p></details>
+          <p id="voice-input-notice" class="muted">按開始即將麥克風音訊傳至所選 Azure 服務。</p>
+          <div class="voice-controls"><button id="voice-start" class="primary">開始語音</button><button id="voice-finish" hidden disabled>提早送出（可選；停頓自動送出）</button><button id="voice-mute" disabled aria-pressed="false">靜音</button><button id="voice-stop" disabled>停止語音</button><button id="close-voice">關閉，繼續文字規劃</button></div><details id="voice-error" hidden><summary>診斷資訊</summary><p id="voice-error-details"></p></details><details class="muted"><summary>語音與模擬資料說明</summary><p id="voice-message"></p><p>請先讀完報價再確認；不收款、不訂位、不開票。</p></details>
+        </section>
         <form id="chat-form" class="composer"><label class="sr-only" for="message">傳送訊息</label><textarea id="message" rows="1" maxlength="2000" placeholder="聊聊旅行想法…" required></textarea><button type="submit" id="send" aria-label="傳送訊息">↑</button></form>
         <div class="composer-foot"><button id="voice" class="voice">◉ Talk to agent <span>待設定 Voice Live</span></button><small>Enter 傳送 · Shift + Enter 換行</small></div>
       </div>

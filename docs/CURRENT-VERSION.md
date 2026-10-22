@@ -1,23 +1,47 @@
-# 本機版本交接：2026-10-19
+# 本機版本交接：2026-10-22
 
-本文件記錄目前已保存的本機版本，不是Azure部署計畫或正式發行聲明。套件為`meihao-airlines` **0.1.0**；沒有為收尾任意增加版本號。
+## 最新本機狀態
 
-## 實際運行與完成範圍
+2026-10-22經使用者核准已受控重啟，3100目前載入REST／SDK切換版本，health build為`f9d470539a7cbe9a`。四模式配置均可用；模式2設定為精確`gpt-realtime-2.1`，模式4沿用已核准Direct Speech設定。實際頁面已確認SDK／WAV選項及開始按鈕，不取得麥克風、不建立語音連線。85項語音相關Node測試、24項瀏覽器測試與語法檢查通過；不代表Azure端到端語音驗收。未呼叫Azure、未改私人`.env`。
 
-2026-10-19收尾時，唯讀`GET http://127.0.0.1:3100/api/health`回傳`ok=true`、`mode=foundry`、`build=6b6814aca5deb4b2`、`voice.available=true`、`voice.type=azure-personal`。這是已載入程式的識別，不是Git SHA，也不代表重新驗證所有Azure依賴、真人麥克風或聲音正確性。收尾沒有重啟3100。
+下方「四架構」及其他啟用／配置／測試敘述保留為較早工作階段的歷史記錄；其中舊model、待配置、未重啟或預覽停止描述不代表上述最新狀態。GitHub是否已提交／發布以實際Git操作結果為準，不以歷史「不commit／push」敘述推定。
 
-| 已交付項目 | 目前行為與界線 |
+2026-10-22增量：選項4新增REST／SDK可見切換；SDK使用PushAudioInputStream連續辨識、700／1000ms切段與可選phrase list。可由麥克風16kHz或上傳8／16kHz mono PCM16 WAV，以1280 bytes預設區塊實時重播（最多120秒），中間／全部最終片段及timing顯示於UI。callback排隊、worker依序交原四代理／Personal Voice，半雙工、max8待處理片段；session_stopped不當語句提交。此次未修改私人設定、未呼叫Azure，SDK真實認證與音訊需另行驗收。下方較早的啟用／配置與測試數字為歷史快照，不取代實際health及本次runner結果。
+
+套件`meihao-airlines` **0.1.0**，本機POC，非Azure發布或正式發行聲明。本次四架構澄清不增加版本號、不改私人設定、不重啟、不commit，也不執行雲端查詢／認證／推論／合成。
+
+## 四架構：原始碼、配置、live證據分開
+
+固定順序如下，取代先前把標準Neural聲音列為第四方法的分類；`voice-standard`不是本次第四架構。全部共用外部同一組GPT-5.4四代理及合成工具。
+
+| 順序／模式 | 原始碼與離線實作界線 | 私人配置／運行 | live已證明與未證明 |
+|---|---|---|---|
+| 1 `voice-live` | `azure-speech` zh-TW STT → 同四代理 → `pre_generated` exact-text Personal Voice；`autoanswers=false`，無額外Voice Live GPT-5.4推理 | 保留既有設定；既有預覽是舊行程，不代表已載入本次修訂 | 過往同資源Personal Voice握手及合成收到PCM；不是本次臺灣語音／真人回音驗收 |
+| 2 `voice-realtime` | 需求為Voice Live **`gpt-realtime-2.1`**音訊原生 → `travel_backend` → 同四代理 → `function_call_output` → Azure標準`zh-TW-HsiaoChenNeural`；committed驅動function，無STT配置 | 私人設定仍`gpt-realtime`，新版gate應顯示`configuredModel=gpt-realtime`／`requiredModel=gpt-realtime-2.1`並不可用；沒有替使用者切model | 沒有本次2.1連線、音質、委派或延遲驗收；舊model配置不算2.1成功 |
+| 3 `gpt-live` | 獨立`gpt-live-1`、client delegation、built-in聲音；目前需timed user transcript定位委派；untimed output PCM明示相容播放 | 過往已有核准配置與使用者連線觀察；本次不改endpoint／聲音／設定、不重啟 | 曾見output PCM缺兩個時間欄；不等於端到端委派／口音／延遲已驗收 |
+| 4 `speech-direct` | A保留獨立REST／本機VAD對照組（1秒靜音、28秒片段、30秒硬限）；B新增SDK continuous（700／1000ms、phrase、8／16kHz PCM串流）；兩者接同四代理／SSML Personal Voice，半雙工、不呼叫Voice Live | 沿用既有私人端點／Entra resourceID／speakerProfileId，無新增env；SDK原始碼需核准重啟才可載入 | SDK僅mock事件／音訊格式離線驗證，沒有真實SDK認證或聲學驗收 |
+
+這份文件描述本次實作契約；實作者已回報**targeted Node voice regressions 49項、browser voice cases 10項通過**。這不是完整suite最終結果，也不代表雲端成功；完整suite仍待實際runner完成，不借用舊數字。本文件編修沒有執行測試或服務；先前docs-only檢查核對文字／連結與diff，這次末尾細節修訂未再驗證。source仍需另行受控啟動才可載入。
+
+模式2委派需求為**模型整理（MODEL-DERIVED），非原始逐字稿**；選Azure標準voice時不是模型built-in輸出。模式3的臺灣華語instructions是偏好，不保證口音；目前session契約不能替換Personal Voice。其untimed PCM相容只影響輸出播放，不能替input transcript／delegation補時間。
+
+模式2／3／4後端唯讀，選班、reprice、同意／購買都要停止後回文字；四模式客戶比較連模式1也不交易。麥克風輸入僅要求瀏覽器best-effort `noiseSuppression`／`echoCancellation`，WAV不要求麥克風或這些處理。直接Speech REST使用本機聲學VAD、SDK使用700／1000ms聲學停頓切段，都不是語意VAD／全雙工；REST無phrase list，SDK可選phrase；兩者無auto LID或server AEC。手動提早送出只適用REST可選備援。
+
+Direct Speech只接受精確`DIRECT_SPEECH_ENDPOINT=https://<resource>.cognitiveservices.azure.com`資源root；用`DIRECT_SPEECH_RESOURCE_ID`配Entra或`DIRECT_SPEECH_KEY`。`DIRECT_SPEECH_PERSONAL_SPEAKER_PROFILE_ID`必須為獲核准GUID，不能重用／猜Voice Live的私人voice name。`DIRECT_SPEECH_PERSONAL_VOICE_MODEL`為`DragonLatestNeural`、`DragonHDOmniLatestNeural`或`PhoenixLatestNeural`。送出flush包含最後partial worklet buffer，排程PCM播完才恢復收音。Professional Voice接點已實作：明確`azure-custom`加`VOICE_LIVE_CUSTOM_VOICE_NAME`／`VOICE_LIVE_CUSTOM_VOICE_ENDPOINT_ID`映射`name`／`endpoint_id`；須訓練完成、獲授權且同資源，**目前未配置資產**。
+
+完整設定及官方來源見[Foundry指南](FOUNDRY.md#四種語音架構)；同一客戶講稿、臺灣聽評、slot／intent及量測方法見[比較指南](VOICE-COMPARISON.md)與[示範講稿](DEMO-SCRIPT.md)。browser顯示同一server單調時鐘算出的numeric stage durations，另量本機first packet→playback scheduling delay，非實際聲學出聲。GPT分開記backend結果前`frontend_audio`及結果後`first_audio`，後者不代表語意答案完成。metrics只保留最後一回合numeric IDs／數值於記憶體，無持久報表／下載、不存錄音／逐字稿，不跨host相減、不列未量測排名。
+
+## 既有業務基線
+
+| 已交付項目 | 行為與限制 |
 |---|---|
-| 繁中聊天 | 梅好 Airlines風格但非官方；原生Node HTTP與瀏覽器modules，無前端build；聊天完成探索、五天等規劃、選班與模擬結帳 |
-| 四代理 | 後端協調intent／planner／flight／price；不是自主A2A。意圖摘取、地理／日期解析、權威旅程與工具權限仍由後端控制 |
-| 同源票價工具／MCP | 共用strict handler；有界機場／日期搜尋，選班、expiry、reprice、完整報價呈現、明確同意及冪等模擬確認 |
-| 城市／機場維護 | 43城市群組、45參考機場、122別名關係；支援多機場集合、排除及跨國同名澄清；地理會員不代表航空營運資格 |
-| Voice Live | 真正Azure收音／轉錄與exact-text合成，與文字共用旅程；mute／stop、只讀插話取消、過時回覆隔離、交易lock不假回滾 |
-| Personal Voice | 同一既有資源，明確`azure-personal`／`DragonLatestNeural`；沒有錯誤fallback、訓練／錄音上傳或新聲音佈建 |
-| 語音角色標籤 | Voice Live面板顯示實際意圖協調／旅遊規劃／航班查詢／票價與購買；等待、完成、錯誤／停止及過時事件有明確處理，不增加雲端呼叫 |
-| 對話呈現 | 每則canonical回答最多50 meaningful words，長內容可「繼續」；文字／語音共用100個成功回合，15秒等待提示不另開語音／模型回覆 |
+| 繁中聊天 | 非官方梅好 Airlines風格；原生Node HTTP／browser modules，無前端build；自然探索、五天規劃、合成搜尋與文字模擬結帳 |
+| 四代理 | 後端協調intent／planner／flight／price，不是自主A2A；工具與旅程權威在後端 |
+| 同源票價工具／MCP | 有界機場／日期搜尋、選班、expiry、reprice、完整呈現、明確同意及冪等模擬確認 |
+| 城市／機場維護 | 43城市群組、45參考機場、122別名關係；多機場／排除／跨國同名澄清；地理不代表可售航線 |
+| 對話呈現 | canonical每則最多50 meaningful words；「繼續」保留完整內容；文字／語音共用100成功回合，15秒等待提示不另呼叫模型或TTS |
 
-目前既有Foundry agent refs為：
+既有agent refs（歷史部署資料，未為本次管理GET核驗）：
 
 | 角色 | 名稱 | 版本 |
 |---|---|---|
@@ -26,87 +50,49 @@
 | flight | `meihao-flight-checker-agent` | 7 |
 | price | `meihao-price-purchase-agent` | 5 |
 
-它們使用既有`gpt-5.4`部署及四個managed vector stores；沒有為收尾重新部署或管理GET核驗。詳細先前驗證與工具清單見[Foundry指南](FOUNDRY.md)。新環境不能只複製名稱就假定有權限。
+使用既有`gpt-5.4` deployment及四個managed vector stores；新環境不能複製名稱就假定有權限。合成資料涵蓋**2026-10-16至2027-02-12**，45機場、86有向假設DEMO路線、20,640 dated flights、48,000 fares；非真實／完整DEMO航網、庫存或價格。`DEMO-FLT-*`不是實際班號；無付款、訂位、開票、退款或卡號／護照收集。15個TXT知識快照由manifest列出，不代替工具查價、reprice及同意；重新上傳／索引須另核准。
 
-## 資料、語音與交易事實
-
-合成資料涵蓋**2026-10-16至2027-02-12**：45參考機場、86條有向假設DEMO路線、20,640 dated flights、48,000 fare rows。DEMO／非codeshare標記只是示範約束，**不是完整或已核驗的梅好 Airlines航網**。`DEMO-FLT-*`不是實際班號；價格、機位、行程時間及模擬付款皆不可當作真實可售供應。沒有付款、訂位、開票、退款或護照／卡號收集。
-
-靜態知識可解釋合成資料，但不能代替工具查價、reprice或同意。既有15個TXT知識快照由manifest列出；重新索引／上傳仍需另外核准付費，不是重現離線版本的必要步驟。
-
-發音只改送往exact-text合成的文字，不改畫面／工具識別碼與報價：
-
-| canonical內容 | 語音正規化例 |
-|---|---|
-| `DEMO101`／`DEMO0101` | `D，E，M，O，一，零，一`／`D，E，M，O，零，一，零，一`，保留前置零與I／1差別 |
-| `TPE`／`DEMO-FLT-30` | 字母逐個拼；後者保留模擬意義及三、零，不讀英文百位數 |
-| `2026-11-25T08:30` | 二零二六年十一月二十五日上午八點三十分 |
-| `11/26–11/30` | 十一月二十六號到十一月三十號；亦支援`-`、`—`、`~`、`～` |
-| `TWD 12,300` | 新臺幣一萬二千三百元 |
-| secured checkout URL | 只說「結帳連結已放在對話中」，畫面連結保留原值，不朗讀token／query |
-
-一般英文單字不盲目拆字；受維護的時區路徑改讀當地時間標籤。正規化只執行一次；50詞限制canonical答案，不能截掉發音展開後的必要金額、日期、版本或期限。Personal Voice的`name`須為同資源Personal Voices API回傳的**voice資源id**，不是入口網站顯示名，也不是SSML speakerProfileId；實值只留私人後端設定。過往合成音訊已取得，聲學正確性與相似度仍須本人試聽；既有私人WAV未包含後加的月日區間規則，本次沒有付費重合成。
+發音層不改canonical識別碼／價格：`DEMO101`讀「D，E，M，O，一，零，一」、`DEMO0101`保留前置零，`TPE`逐字母；日期、月日區間、時間與TWD按繁中語意，安全URL只說連結在畫面。Personal Voice的Voice Live `name`與Speech SSML `speakerProfileId`不同。歷史取得音訊不等於字母正確性、相似度或新規則已試聽。
 
 ## 重現與維護
 
-需要Node.js >=22。此開發機`.env`為已核准的付費foundry模式；**離線重現不要直接沿用該設定**。在乾淨副本使用下列方式啟動，不讀取私人`.env`：
+Node.js >=22。此開發機私人`.env`為已核准付費foundry模式，**離線重現不要直接沿用**。在乾淨副本使用下列方式，不讀私人`.env`：
 
 ```powershell
 Set-Location C:\Code\travelagent
 npm DEMO
 $env:APP_MODE = 'mock'
 $env:VOICE_LIVE_ENABLED = 'false'
+$env:VOICE_LIVE_REALTIME_ENABLED = 'false'
+$env:GPT_LIVE_ENABLED = 'false'
+$env:DIRECT_SPEECH_ENABLED = 'false'
 $env:PAYMENT_PROVIDER = 'mock'
 $env:PORT = '3102'
 node server.js
 ```
 
-開啟`http://127.0.0.1:3102`；Ctrl+C停止自己啟動的程序。3102是重現示例，沒有在本次收尾啟動第二個服務。mock僅有有限離線語句；不宣稱與真實GPT任意對話相同。`npm start`會載入`.env`，只有明確同意live用量後才使用既有私人設定。通用`.env.example`維持mock／Voice關閉，不含私人voice id或憑證。跨shell設定不會自動保留。
+這是重現命令，不表示本次有啟動3102。Ctrl+C只停止自己啟動的程序；`npm start`會載入`.env`，不得為比較自行啟動live。mock支援有限離線語句，不等於任意GPT理解。舊checkout若還有`VOICE_LIVE_STANDARD_ENABLED`也應保持false，不把它當新版第四模式。
 
-Excel範本為`data\templates\city-airport-mapping.xlsx`。維護需要Python3與`openpyxl==3.1.5`；若缺少依賴，只使用組織核准的Microsoft-protected feed：
+離線檢查：`npm run check`、`npm run check:mapping-voice`、`npm test`、`npm run test:ui`。Playwright使用獨立mock 3101；缺瀏覽器時依組織核准政策準備，不為此下載非核准來源。不要為重現執行`deploy:agents`、`ingest:knowledge`、`test:voice:live`或任何雲端`--apply`腳本。
 
-```powershell
-python -m pip install --index-url https://packagefeedproxy.microsoft.io/pypi/simple/ -r scripts\requirements-workbook.txt
-node scripts\import-city-airports.js .\data\templates\city-airport-mapping.xlsx
-# 明確決定替換完整地理快照後才執行：
-node scripts\import-city-airports.js .\data\templates\city-airport-mapping.xlsx --apply
-```
+城市Excel範本與dry run／原子apply見[對照維護](CITY-AIRPORT-MAPPING.md)。需Python3與固定`openpyxl==3.1.5`；缺依賴時使用`scripts\requirements-workbook.txt`指定的組織核准feed。apply只替換地理快照，不建立可售航線，下次受控重啟才載入。
 
-dry run整本驗證不寫檔；apply只原子替換`data\city-airport-import.json`，不生成可售路線／票價。服務下次受控重啟才載入，須先提醒旅程遺失。完整欄位、禁止公式／巨集與限制見[對照維護](CITY-AIRPORT-MAPPING.md)。
+## 歷史證據：不是新四架構驗收
 
-離線檢查命令：
+- 2026-10-19的3100 health曾回build `6b6814aca5deb4b2`；其後經核准曾重啟至`95454a00cfb73382`並配置GPT-Live。兩個都是**歷史build**，不能當成本次新source已載入證據；health也不保證雲端依賴健康。本次未重新讀取／重啟預覽。
+- 舊收尾曾有XLSX Python reader約30秒逾時，後續連續讀取與suite通過；根因未證明、未加timeout或略過測試。當時79/79 Node、8/8 UI及後續舊四選項96/96、12/12為不同階段歷史數字，**不證明本次Speech REST或Realtime 2.1通過**。
+- GPT-Live output曾觀察有效PCM但缺`start_ms`／`end_ms`，新增明示連續播放相容；先前base64／timing診斷不能概括為整體live成功。沒有在本次代使用者重試。
+- Personal Voice過往同資源metadata／握手／固定合成取得音訊，沒有錄音／訓練／複製聲音，未評估聲學相似度。未為比較重新合成私人預覽WAV。
+- `prototypes\hosted-adapter\`僅隔離離線原型：官方Python Invocations host接loopback Node，過往SDK ASGI、HTTP／WS smoke成功；不證明Azure/Linux雙行程映像、managed identity、平台路由或公開HTTPS／WSS完成。
 
-```powershell
-npm run check
-npm run check:mapping-voice
-npm test
-npm run test:ui
-```
+## 記憶體、費用與分享
 
-Playwright自開mock 3101，與3100分開；若缺瀏覽器，依組織核准下載政策準備Chromium後再執行。沒有前端build指令。不要為重現版本執行`deploy:agents`、`ingest:knowledge`、`test:voice:live`或任何含`--apply`的雲端腳本；那些會修改服務或產生費用。
+旅程／報價／同意／模擬收據memory-only；session最多100、閒置1小時失效，重啟／失效遺失，不跨instance恢復。既有全域Voice上限4，不宣稱已支援5人並行。不限制每旅程累計Voice連線次數；每旅程100成功回合、60工具單位、600雲端requests／2.4M回報tokens軟門檻不是帳單上限。
 
-## 本次驗證與間歇性問題紀錄
+Azure部署仍暫停；沒有正式登入、公開URL、Dockerfile／IaC或持久化月用量ledger。未來US$100 admission估算需求不是已實作功能或Azure帳單硬上限，不做費用優劣推測。
 
-初次收尾檢查曾有`tests\city-airports.test.js:102`的XLSX reader約30秒逾時：`Workbook reader unavailable: spawnSync python ETIMEDOUT`；隔離整個city測試檔亦重現一次。重新取得版本收尾授權後，同樣wrapper直接執行約2.8秒，四次連續Python reader約2.7–3.1秒皆成功，單獨XLSX測試通過；其後完整suite **79/79通過**。**未證明先前逾時的根因、未宣稱修復，也沒有增加timeout或略過測試**。若重現，需調查Python啟動／當時資源狀況；不能以本次通過保證不再出現。
-
-最終離線驗證：`npm run check`、`npm run check:mapping-voice`通過，`npm test`79/79通過，`npm run test:ui`8/8通過。涵蓋發音／月日區間、角色標籤、搜尋、報價／同意、同源MCP、語音取消與交易界線；UI使用mock transport，不能證明真人音訊／live可用。本次沒有重新執行官方SDK原型或付費推論／合成，沒有重新安裝依賴或重啟3100。
-
-為公開分享而移除管理腳本硬編碼的私人endpoint；新增留白即拒絕的`FOUNDRY_APPROVED_PROJECT_ENDPOINT`，與目標完全一致才允許進入既有管理流程。新增離線測試確認留白／不符皆零寫入。私人`.env`不修改，live服務不重啟；這不是新增雲端功能或部署授權。Node lockfile保留既有Microsoft-protected feed與版本／integrity，沒有為公開分享繞過組織套件來源政策；新環境須具備其核准feed存取能力。
-
-## 實驗成果與暫停工作
-
-`prototypes\hosted-adapter\`為明確核准的**隔離離線原型**：官方Python Invocations host轉接私有loopback Node核心，先前8項官方SDK ASGI測試、Hypercorn HTTP／WS smoke及4項既有Node取消／交易測試通過。它不讀`.env`，使用mock業務與固定Voice替身，不是真實語音或production gateway。套件與核准feed固定於其requirements，重現命令見[Foundry指南](FOUNDRY.md)。
-
-這不證明Azure/Linux雙行程映像、managed identity、平台session路由或公開HTTPS／WSS已驗收。沒有Dockerfile／IaC、雲端build／push、新資源、登入網站或公開URL。`.copilot-azure`只有私人唯讀架構／費用與流程評估，不屬於應發布套件，也不是部署結果。
-
-Azure工作維持暫停；原始碼Git快照／推送另經核准，不是雲端上線。最多5並行、每月100次×10分鐘、US$100估算AI／voice admission門檻只是未來需求，**目前未實作全域持久化ledger或demo-key登入**；US$100不是Azure帳單上限。現版本全域Voice上限仍為4，不能宣稱已支援5人同時語音。
-
-## 記憶體、分享與Git狀態
-
-session最多100、閒置1小時失效；旅程、報價、同意與模擬收據皆memory-only。重啟／session失效會遺失，不做跨session／跨instance恢復。每旅程100成功回合、60工具單位、600雲端requests／2.4M回報tokens軟門檻及每旅程3次Voice連線仍不是費用硬上限。沒有正式使用者登入，不可公開綁定、tunnel分享或直接部署。
-
-使用者指定的[GitHub目的地](https://github.com/punmeng/travel-agent-with-voice-live)在檢查時為空的公開repository。本機另經核准初始化`main`、設定該精確origin，沒有自建遠端repository、覆寫遠端歷史或建立PR／tag／release。GitHub推送是否成功以最後命令結果及對應commit為準，文件本身不作成功證據。此文件不內嵌自身commit SHA，以免循環修改。
-
-`.gitignore`排除`.env`及變體（保留`.env.example`）、整個`.foundry`與`.copilot-azure`、node_modules、venv、Python cache、workbook／Playwright暫存、uploads／recordings、WAV／私鑰及logs。公開文件改用resource／project佔位及私人metadata說明，不包含實際voice／vector store／subscription識別。不要整個資料夾ZIP後上傳。
-
-只將應用原始碼、lockfile、範本設定、公開合成資料、維護腳本、測試、文件與明示experimental原型納入快照。知識TXT只納入目前manifest的15檔；16份舊生成檔保留本機但不發布。新增hash快照檔須先核對manifest再明確`git add -f`，不要把整個舊快照目錄加入。`.gitattributes`固定文字LF、Excel binary，避免Windows checkout改動知識檔SHA-256／bytes。
+公開來源目的地為[GitHub repository](https://github.com/punmeng/travel-agent-with-voice-live)，不是已部署網站；push結果以實際命令為準，本次不commit／push。`.gitignore`排除私人`.env`、`.foundry`、`.copilot-azure`、憑證、logs、WAV／recordings、venv與依賴等。不要整個資料夾ZIP分享；只發布核准來源／合成資料／manifest所列知識檔，不加入私人證據或過期快照。
+> 最新離線驗證：完整 Node **113/113**、Playwright **15/15**、兩組語法檢查與 diff 檢查通過。這不是雲端語音驗收。
+>
+> 啟用狀態補充：本次最後檢查 `http://127.0.0.1:3100/api/health` 連線遭拒，未發現 3100 listener；先前預覽命令亦不在目前命令登錄中，結束原因未確認。本次未停止或重啟預覽，也未變更私人 `.env`。不得把先前 `gpt-realtime` 的啟用結果視為新 `gpt-realtime-2.1` 已啟用；後續須另行核准設定與啟動。
+> 語音失敗診斷補充：`response.done`失敗或不符唯一completed function契約時，新增僅含allowlist狀態／錯誤分類、output數量、最多8個item類型／狀態／是否預期工具的本機診斷。不記錄原始錯誤訊息、參數、逐字稿、音訊或服務識別碼。前端模型失敗使用`VOICE_REALTIME_RESPONSE`，朗讀失敗仍為`VOICE_SYNTHESIS`。沒有放寬委派或交易檢查；需要核准重啟後才會生效。

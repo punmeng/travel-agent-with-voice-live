@@ -387,7 +387,7 @@ sequenceDiagram
 | 搜尋 | 最多2×2機場配對，每組最多3對日期；平行2、6候選 |
 | Foundry | 600 requests（100×2 agents×3輪）；回報2,400,000 tokens後拒絕下一次 |
 | function loop | 最多3輪、每輪3 calls；每次response最多2,500 output tokens／60秒timeout；無自動重試 |
-| Voice連線 | 移除應用5分鐘timer；最多100轉錄回合且共用journey100完成回合；每session3次ticket、全域最多4連線 |
+| Voice連線 | 移除應用5分鐘timer；最多100轉錄回合且共用journey100完成回合；不限制每session累計ticket次數、同旅程限單一連線、全域最多4連線 |
 | Voice傳輸 | input576MB（100×120秒PCM，包含持續收音的靜音／等待）、output288MB（100×60秒PCM）；每秒144KB突發、單frame48KB及背壓維持 |
 | Voice起始 | ticket30秒一次性；session設定20秒timeout；上游handshake15秒；無自動重連 |
 

@@ -2,10 +2,31 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { WebSocket } from 'ws';
-import { speechText, chineseNumber } from '../lib/speech.js';
+import { speechText, chineseNumber, withoutSpeechSources } from '../lib/speech.js';
 import { bridgeVoice, voiceConfig } from '../lib/voice.js';
 import { createSession } from '../lib/core.js';
 import { countWords } from '../lib/replies.js';
+
+test('voice omits explicit source metadata and citation tokens but preserves answer, warnings and transaction facts', () => {
+  const answer = 'DEMO101，TWD 12,345。航班與價格均為模擬，營業時間未核驗。';
+  for (const suffix of [
+    '\n\n知識來源（合成示範靜態快照）：flight-knowledge.txt',
+    '\n資料來源：梅好 Airlines網站 https://example.test/source',
+    '\n**參考資料：**\n- [航點](https://example.test/stops)\n- flight-knowledge.txt',
+    '\n### Sources\n1. https://example.test/source',
+    '\n來源：https://example.test/source'
+  ]) {
+    const canonical = answer + suffix;
+    assert.equal(withoutSpeechSources(canonical), answer);
+    assert.equal(speechText(canonical), speechText(answer));
+    assert.ok(canonical.includes(suffix), 'visible canonical answer is unchanged');
+  }
+  assert.equal(withoutSpeechSources('東京。大阪。'), '東京。大阪。');
+  assert.equal(withoutSpeechSources('來源：https://example.test\n不收款、不訂位、不開票。'), '不收款、不訂位、不開票。');
+  assert.equal(withoutSpeechSources('資料來源尚未核驗。\n- 票價 TWD 12,345\n- 不收款。'), '資料來源尚未核驗。\n- 票價 TWD 12,345\n- 不收款。');
+  assert.equal(withoutSpeechSources('資料來源：https://example.test。此為模擬，不收款。'), '此為模擬，不收款。');
+  assert.equal(withoutSpeechSources('資料來源：example.txt'), '');
+});
 
 test('flight/code letters are spelled separately and Mandarin digits preserve I versus 1 and leading zero', () => {
   for (const [canonical, spoken] of [
@@ -68,7 +89,7 @@ test('voice delivers canonical display facts and normalizes speech once without 
   }
   const env = { VOICE_LIVE_ENABLED: 'true', VOICE_LIVE_ENDPOINT: 'https://demo.services.ai.azure.com/' };
   const client = new Socket(), upstream = new Socket(), session = createSession();
-  const canonical = '11/26–11/30，DEMO0101，TPE，TWD 12,345，有效至2026-11-25T08:30。不收款。';
+  const canonical = '11/26–11/30，DEMO0101，TPE，TWD 12,345，有效至2026-11-25T08:30。不收款。\n\n知識來源（合成示範靜態快照）：flights.txt';
   assert.ok(countWords(canonical) <= 50);
   const bridge = bridgeVoice(client, upstream, session, env, voiceConfig(env), {
     chat: async () => ({ text: canonical, state: { offers: [{ id: 'DEMO0101' }], quote: null } })
@@ -82,6 +103,7 @@ test('voice delivers canonical display facts and normalizes speech once without 
     const requests = upstream.sent.filter(event => event.type === 'response.create');
     assert.equal(requests.length, 1);
     assert.equal(requests[0].response.pre_generated_assistant_message.content[0].text, speechText(canonical));
+    assert.doesNotMatch(requests[0].response.pre_generated_assistant_message.content[0].text, /知識來源|flights\.txt/);
     assert.equal(speechText(speechText(canonical)), speechText(canonical), 'already normalized values do not change again');
     upstream.event({ type: 'response.created', response: { id: 'speech-one' } });
     upstream.event({ type: 'input_audio_buffer.speech_started' });

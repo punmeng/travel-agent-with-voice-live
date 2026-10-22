@@ -22,7 +22,8 @@ test('desktop chat-only planning, selection, quote and confirmation with no choi
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('#send')).toBeEnabled();
   await expect(page.locator('.rail, .steps, .conversation-head, .brand-mark')).toHaveCount(0);
-  await expect(page.locator('select, input, .card, [data-prompt], #trip-form')).toHaveCount(0);
+  await expect(page.locator('select:not(#voice-mode):not(#speech-options select), input:not(#voice-panel-height):not(#speech-options input), .card, [data-prompt], #trip-form')).toHaveCount(0);
+  await expect(page.locator('#voice-mode')).toHaveCount(1);
   await say(page, '從桃園到成田，2026-11-12，2 人，經濟艙，少步行，請規劃行程');
   await expect(page.locator('#messages')).toContainText('東京・三日靈感提案');
   await say(page, '搜尋航班，比較前後一天');
@@ -43,10 +44,10 @@ test('desktop chat-only planning, selection, quote and confirmation with no choi
   await expect(page.locator('input, form')).toHaveCount(0);
   await page.getByRole('link', { name: '回到旅行對話' }).click();
   await expect(page.locator('#send')).toBeEnabled();
-  await expect(page.locator('select, input, .card, [data-prompt], #purchase')).toHaveCount(0);
+  await expect(page.locator('select:not(#voice-mode):not(#speech-options select), input:not(#voice-panel-height):not(#speech-options input), .card, [data-prompt], #purchase')).toHaveCount(0);
   await page.getByRole('button', { name: /Talk to agent/ }).click();
   await expect(page.locator('#voice-dialog')).toContainText('尚未啟用');
-  await expect(page.locator('#voice-start')).toBeHidden();
+  await expect(page.locator('#voice-start')).toBeDisabled();
   await page.getByRole('button', { name: '關閉，繼續文字規劃' }).click();
   await page.screenshot({ path: 'test-results/desktop.png', fullPage: true });
   expect(errors).toEqual([]);
@@ -65,7 +66,7 @@ test('mobile partial chat setup, keyboard submission and recoverable retry', asy
   await page.getByRole('button', { name: '重試', exact: true }).click();
   await expect(page.locator('#messages')).toContainText('東京・三日靈感提案');
   await expect(page.getByRole('alert')).toBeHidden();
-  await expect(page.locator('select, input, .card, [data-prompt]')).toHaveCount(0);
+  await expect(page.locator('select:not(#voice-mode):not(#speech-options select), input:not(#voice-panel-height):not(#speech-options input), .card, [data-prompt]')).toHaveCount(0);
   await page.screenshot({ path: 'test-results/mobile.png', fullPage: true });
 });
 test('country-level inspiration and five-day plan never request codes or trigger a search', async ({ page }) => {
