@@ -10,7 +10,7 @@
 
 ```powershell
 Set-Location C:\Code\travelagent
-npm DEMO
+npm ci
 npm start
 ```
 

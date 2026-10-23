@@ -438,7 +438,7 @@ HTTP retry使用同requestId及原quote context，不因重試偷換新報價；
 
 ```powershell
 Set-Location C:\Code\travelagent
-npm DEMO
+npm ci
 npm start
 ```
 

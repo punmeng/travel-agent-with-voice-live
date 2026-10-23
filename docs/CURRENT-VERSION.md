@@ -60,7 +60,7 @@ Node.js >=22。此開發機私人`.env`為已核准付費foundry模式，**離�
 
 ```powershell
 Set-Location C:\Code\travelagent
-npm DEMO
+npm ci
 $env:APP_MODE = 'mock'
 $env:VOICE_LIVE_ENABLED = 'false'
 $env:VOICE_LIVE_REALTIME_ENABLED = 'false'
