@@ -6,7 +6,6 @@ import { WebSocket } from 'ws';
 import { AzureCliCredential } from '@azure/identity';
 import { createApp } from '../server.js';
 import { voiceConfig, voiceSessionUpdate } from '../lib/voice.js';
-import { countWords } from '../lib/replies.js';
 
 if (!process.argv.includes('--apply')) throw new Error('Requires --apply: bounded paid synthetic Voice Live interrupt and two GPT turns.');
 const config = voiceConfig(process.env);
@@ -90,7 +89,8 @@ try {
   assert.equal(result.state.discovery.originCity, '台北');
   assert.equal(result.state.discovery.destinationCity, '大阪');
   assert.equal(result.state.toolUnits, 0);
-  assert.ok(countWords(result.text) <= 50);
+  assert.ok(result.text.trim());
+  assert.equal(result.state.moreReply, false);
   client.send(JSON.stringify({ type: 'stop' })); await once(client, 'close');
   const response = await fetch(`${origin}/api/chat`, { method: 'POST', headers,
     body: JSON.stringify({ message: '11月15號出發。', requestId: crypto.randomUUID() }) });
@@ -98,7 +98,8 @@ try {
   assert.equal(response.status, 200);
   assert.equal(dated.state.draft.date, '2026-11-15');
   assert.doesNotMatch(dated.text, /需要確定一天|哪天出發|哪一天出發/);
-  assert.ok(countWords(dated.text) <= 50);
+  assert.ok(dated.text.trim());
+  assert.equal(dated.state.moreReply, false);
   const report = { checkedAt: new Date().toISOString(), syntheticAudio: true, humanMicrophoneTested: false,
     originalFetchArtificialDelayMs: 25000, deferredAborted, voiceFetchAttempts: calls,
     transcripts, events, onlyLatestResult: result.text, correctedMonth: result.state.discovery.datePreference,

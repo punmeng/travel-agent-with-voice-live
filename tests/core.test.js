@@ -141,7 +141,7 @@ test('all four mock agents route, share state, and chat cannot purchase', async 
   assert.equal(r.state.activeAgent, 'flight'); assert.ok(r.state.offers.length > 0);
   selectOffer(s, r.state.offers[0].id);
   r = await chat(s, { message: '我要買票付款' }, { APP_MODE: 'mock' });
-  assert.equal(r.state.activeAgent, 'price'); assert.ok(s.quote); assert.equal(r.state.quote, null); assert.equal(s.bookings.size, 0);
+  assert.equal(r.state.activeAgent, 'price'); assert.ok(s.quote); assert.equal(r.state.quote.id, s.quote.id); assert.equal(s.bookings.size, 0);
   await chat(s, { message: '從高雄到成田，2026-11-14，3 人，預算 40000', action: 'plan' }, { APP_MODE: 'mock' });
   assert.equal(s.trip.origin, 'KHH'); assert.equal(s.trip.destination, 'NRT');
   assert.equal(s.trip.date, '2026-11-14'); assert.equal(s.trip.travelers, 3); assert.equal(s.trip.budget, 40000);

@@ -4,7 +4,7 @@ export function createAgentStatus(element) {
   let current = null;
   function render(role, status) {
     element.textContent = role ? `${roles[role]} · ${status === 'completed' ? '已完成' : '處理中'}` : '等待對話';
-    element.title = role ? `${roles[role]}代理（${role}）` : '依後端實際進度顯示代理，不推測尚未收到的狀態';
+    element.title = role ? `${roles[role]}專員` : '等待開始對話';
     element.dataset.status = status;
     element.dataset.role = role ?? '';
   }

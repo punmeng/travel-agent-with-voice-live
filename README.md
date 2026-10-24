@@ -1,5 +1,9 @@
 # 梅好 Airlines · AI 旅遊規劃師
 
+目前程式版本 **v1.0.6**，3100已啟用（啟用狀態見`docs\CURRENT-VERSION.md`）。版本來源為`package.json`，health、bootstrap、MCP與頁尾共用；後續發布更新該版本及lockfile。頁尾顯示`Powered by Microsoft Innovation Taipei`，不加入額外標誌或官方認證聲明。
+
+畫面完整顯示本輪答案，不需說「繼續」。語音平常摘要，要求全部展開或指定某一天詳述時提供詳細內容；Option1及直接Speech內部按句分段，播放完一段自動接下一段，停止即清空。原生Realtime／GPT-Live依完整後端資料與詳略要求生成語音。畫面、選班與報價資料不因語音摘要而刪減，所有交易仍須完整畫面與目前報價綁定的明確同意。
+
 繁體中文、本機優先的可執行示範。梅好 Airlines 是專案虛構品牌；**不是任何航空公司的服務，未使用客戶名稱或標誌**。
 
 **架構說明更新：2026-10-22，套件版本0.1.0。** 梅好 Airlines 是非官方示範品牌；航班與票價是虛構合成資料，不代表任何客戶或航空公司。最新本機狀態見[版本交接](docs/CURRENT-VERSION.md)，語音測試設計見[四架構比較與量測](docs/VOICE-COMPARISON.md)。Azure發布、demo-key登入、跨session月額度治理仍暫停且未實作；`prototypes\hosted-adapter`只是隔離離線原型，不屬於正式網站功能。本機版本保存於[GitHub原始碼repository](https://github.com/punmeng/travel-agent-with-voice-live)，這不是已部署的線上網站。
@@ -18,7 +22,7 @@ npm start
 
 **所有業務選擇僅透過聊天輸入**，沒有表單、快捷選項、選擇卡或購買按鈕。可以從「我想去日本玩幾天」開始，接著聊「想賞楓，不要走太多路，下個月中，五天，帶媽媽」→「那東京好了，幫我安排五天」。不用機場代碼，也不用先交齊日期、人數與艙等才能規劃。助理先回應旅行想法，再問下一個有用的問題，保留國家、主題、同行者、步調及天數。
 
-介面已精簡為小標頭、聊天與單一輸入區；**每則助理對話最多50詞**，不是50字，也不是英文空白計數。中文／混合文用 `Intl.Segmenter('zh-Hant', { granularity: 'word' })` 的 word-like 分段；日期、金額、識別碼與URL完整保留，模擬結帳連結按畫面標籤計詞。模型先被要求精簡，後端再逐則檢驗；較長行程、航班、引用與報價用「繼續」完整分段，優先在句末或換行切頁，不丟失五天內容。**文字／語音／繼續共用100個成功完成的使用者回合**；冪等重試、等待提示及失敗不計完成回合，失敗可能仍有雲端用量。分段不呼叫模型。50詞不包括角色名稱、介面、錯誤面板或文件。語音依同一受限text作確定性發音展開，不另寫答案；完整航班未呈現不能選擇，完整最新報價未呈現不能同意。長回覆不是截斷後假稱已完成。
+介面已精簡為小標頭、聊天與單一輸入區。**文字回覆直接回答本輪問題並完整顯示，不必輸入「繼續」**：會議編輯先回答會議與交通，預算編輯先回答分配，詢問機票選項直接列工具取得的班號、日期、時間與含稅總價。`delivery: "text"`、`delivery: "voice"`及未帶格式的API均回傳完整`result.text`，沒有50詞分頁；`result.speech`另提供摘要或明確要求的詳細朗讀。Option1及直接Speech以最多48段、每段120字元自動接續，超過朗讀安全上限會明確停止，畫面答案保留。**文字／語音共用100個成功回合**；相容的「繼續」只提示上一則已完整顯示，仍計一回合，不另呼叫模型。重試、等待及失敗不計成功回合，失敗仍可能有雲端費用。完整航班呈現後才允許選擇，完整最新報價呈現後才允許明確同意；兩種格式都保留報價版本、總額、期限及冪等檢查。
 
 詢問機場後回答「都可以／沒差／任何一個／你幫我選」，會按最近問題接受該城市候選集合，不忘記城市或默選機場；「不要松山」可縮小集合。最多2×2機場組合、每組最多三對日期，總工具預算與平行2仍有效。沒有符合的合成示範路線會明確回傳無結果，不補入真實航空公司航班。文字／語音等待超過15秒會顯示「我還在查詢，請稍等一下。」；語音等待提示僅為畫面狀態，不開第二個朗讀／模型回覆，不佔回合或授權交易。
 
@@ -39,9 +43,9 @@ npm start
 | 1 `voice-live` | Voice Live `azure-speech` zh-TW STT → 外部同四代理 → `pre_generated` exact-text TTS | 既有Personal Voice；`autoanswers=false`，不是再加一次Voice Live GPT-5.4推理 |
 | 2 `voice-realtime` | Voice Live **`gpt-realtime-2.1`**音訊原生前端 → 受控`travel_backend` → 同四代理 → `function_call_output` → Voice Live音訊 | 本次選Azure標準`zh-TW-HsiaoChenNeural`，不是模型內建聲音；不配置STT，畫面委派需求是模型整理、非原始逐字稿；唯讀 |
 | 3 `gpt-live` | 獨立`gpt-live-1` API → client delegation → 同四代理 → built-in語音 | 目前用有時間戳的使用者轉錄定位委派，不是把原始音訊交四代理；依目前session契約不能換Personal Voice；唯讀 |
-| 4 `speech-direct` | **Speech REST**短音訊16kHz WAV zh-TW STT → 同四代理 → Speech REST SSML Personal Voice | 完全不呼叫Voice Live；speakerProfileId＋base model；本機聲學VAD在停頓約1秒自動送出，手動提早送出可選；片段最長28秒、server硬限30秒；半雙工，播完才恢復收音；唯讀 |
+| 4 `speech-direct` | A **Speech REST**短音訊STT／B **Speech SDK**連續辨識 → 同四代理 → Speech REST SSML Personal Voice | 完全不呼叫Voice Live；speakerProfileId＋base model；A本機聲學VAD停頓約1秒送出，片段最長28秒／server硬限30秒；B可用mic或8／16kHz PCM16 WAV（最多120秒），每個final依序處理；半雙工、唯讀 |
 
-模式2以`input_audio_buffer.committed`觸發要求function的`response.create`，不依賴可選STT事件。私人設定目前仍為`gpt-realtime`，**不是2.1**；新版應回報實際`configuredModel`及`requiredModel=gpt-realtime-2.1`並拒絕，不改設定、不降級。模式4獨立`DIRECT_SPEECH_ENABLED=false`；資源、認證及聲音profile映射尚待核准私人設定，不能猜ID或宣稱已連通。
+模式2以`input_audio_buffer.committed`觸發要求function的`response.create`，不依賴可選STT事件。只接受精確`gpt-realtime-2.1`；若實際`configuredModel`不符`requiredModel`就拒絕，不改設定、不降級。模式4獨立opt-in，通用範本`DIRECT_SPEECH_ENABLED=false`；目前3100已核准配置四模式及REST／SDK，配置可用不代表同條件真人驗收完成。實際啟用與歷史證據見[版本交接](docs/CURRENT-VERSION.md)，不能猜資源或profile ID。
 
 四者都要求瀏覽器`noiseSuppression`／`echoCancellation`，只是best-effort，不保證硬體／房間降噪或回音消除。模式4無短音訊REST phrase list、自動語言辨識或server AEC，不能說是語意VAD／全雙工。GPT-Live的臺灣華語指令只是偏好，不保證口音；未帶時間戳的輸出PCM僅用明示連續播放相容處理，不能拿來補造委派時間。
 
@@ -57,13 +61,15 @@ npm start
 
 四代理分工位於 `lib\agents.js`：`intent`、`planner`、`flight`、`price`。Foundry intent 以嚴格 JSON schema 摘取當則原文片段，後端驗證原文證據及型別、解析機場／日期並維護獨立的 discovery/draft 與可搜尋 trip。planner 提供自然文字與知識引用；flight/price 不能用模型文字覆寫工具結果。權限與選班、報價、同意、結帳保留後端控制，確認與選擇回合不呼叫模型。詳見 [Foundry 設定指南](docs/FOUNDRY.md)。
 
+2026-10-23共用旅程修正：Node以`contextVersion`驗證每輪合併，拒絕過時的頁面或模型更新。`discovery.planning`分開保存商務目的、逐日會議時段、活動、住宿晚數／區域、地面機場交通及含機票／住宿的TWD預算；不把東京車站、淺草或「往返交通」當成改目的地／來回機票。支援完整斜線日期`2026/11/12`，所有角色共用待回答欄位與機場接受集合。改飛行條件會清除相關候選與報價；只改少步行或會議資訊不重查航班。四代理按角色收到精簡資料，摘要讀已保存事實而不重跑模型／工具；`diagnostics.modelCalls`提供實際回傳的token數與本機輸入bytes，未提供的usage保持null。住宿金額只作預算配置，不查空房或即時房價。狀態仍僅存本機session記憶體，重啟／新旅程／閒置一小時會清除，沒有新增資料庫。
+
 架構與邊界詳見 [AI 系統設計文件](docs/SYSTEM-DESIGN.md)；示範流程見 [繁中講稿](docs/DEMO-SCRIPT.md)。
 
 **原模式1曾接上真正Azure Voice Live。** 以下是原模式1的既有行為，不是新四架構的live驗收。它明確使用Personal Voice、不遇錯換聲，轉錄與canonical回答顯示在同一對話；所有模式都不使用瀏覽器STT/TTS。原模式1思考或朗讀時可插話，例如「不是十月，是十一月中」；舊只讀模型請求取消後，依最新更正序列處理，過時答覆不顯示／朗讀。交易不強制中斷或假回滾。按停止或關閉後可繼續文字，旅程與報價共用。Professional Voice設定接點已實作：明確選`azure-custom`，搭配`VOICE_LIVE_CUSTOM_VOICE_NAME`／`VOICE_LIVE_CUSTOM_VOICE_ENDPOINT_ID`對應`name`／`endpoint_id`；須先有訓練完成、獲授權且同資源的資產，目前**未配置資產**。
 
 Personal Voice已於2026-10-19完成同資源唯讀核對及少量真實合成：`azure-personal`／`DragonLatestNeural`，收到100,768 bytes PCM音訊，沒有替代聲音。Voice Live的`name`使用服務回傳的voice資源`id`，不是入口網站顯示名稱，也不是一般SSML的speakerProfileId；identifier只保留於忽略的後端`.env`。未處理錄音或評估人聲相似度。詳見[Personal Voice接線及限制](docs/FOUNDRY.md#personal-voice)。
 
-發音由`lib\speech.js`在送入Voice Live的exact-text合成前正規化一次：`DEMO101`逐碼讀出，`DEMO0101`保留前置零，`DEMO-FLT-30`保留模擬意義並逐字母／數字朗讀，`TPE`→`T，P，E`。一般英文單字不盲目拆字。日期／時間讀繁中語意（如`2026-11-25T08:30`→`二零二六年十一月二十五日上午八點三十分`），TWD金額讀「新臺幣…元」，時區路徑讀臺灣／日本等當地時間標籤。結帳連結只說已放在對話中，不朗讀安全token；畫面原始碼、日期、總額、版本、期限及可點擊連結不改。50詞上限檢查canonical顯示回覆；逐碼發音可能展開較長，不能為縮短而丟掉金額／期限等事實。實際Personal Voice已收到正規化合成音訊，但字母辨識與聲音效果仍需本人試聽。
+發音由`lib\speech.js`在送入Voice Live的exact-text合成前正規化一次：`DEMO101`逐碼讀出，`DEMO0101`保留前置零，`DEMO-FLT-30`保留模擬意義並逐字母／數字朗讀，`TPE`→`T，P，E`。一般英文單字不盲目拆字。日期／時間讀繁中語意（如`2026-11-25T08:30`→`二零二六年十一月二十五日上午八點三十分`），TWD金額讀「新臺幣…元」，時區路徑讀臺灣／日本等當地時間標籤。結帳連結只說已放在對話中，不朗讀安全token；畫面原始碼、日期、總額、版本、期限及可點擊連結不改。canonical顯示回覆不受50詞限制；逐碼發音展開後仍受有界朗讀限制，不能為縮短而丟掉金額／期限等事實。實際Personal Voice已收到正規化合成音訊，但字母辨識與聲音效果仍需本人試聽。
 
 可直接開啟本機`.foundry\pronunciation-preview.wav`試聽固定合成句（不是錄音、真實航班或購買）；內容含DEMO101、DEMO0101、TPE、日期時間及TWD總額。重新產生會使用付費雲端語音，須明確授權：`node --env-file=.env scripts\smoke-voice-output.js --apply --pronunciation --save-preview`。不透過模型捏造可售航班來測試。
 
@@ -71,13 +77,13 @@ Personal Voice已於2026-10-19完成同資源唯讀核對及少量真實合成�
 
 對話上方常駐「目前代理」顯示後端**實際當前處理角色**：意圖協調／旅遊規劃／航班查詢／票價與購買，不需打開語音面板。語音使用同session的`progress` WS事件；文字以只讀`/api/progress`查詢目前requestId，不呼叫額外AI。新回合重設，完成明示「已完成」，聆聽無任務、停止、錯誤回到「等待對話」；忽略被取代回合的延遲事件。這不是第五個語音agent，標籤不會朗讀。
 
-語音面板可用「面板高度」滑桿（鍵盤方向鍵亦可）或右下角拖曳調整高度；「放大對話寬度」可切換寬版。較長對話保留於獨立可捲動對話區；管線說明預設收合，不遮住對話。四模式編號固定為1–4。
+語音面板可用「面板高度」滑桿（鍵盤方向鍵亦可）或右下角拖曳調整高度；「放大對話寬度」可切換寬版。較長對話保留於獨立可捲動對話區；「語音與模擬資料說明」預設收合，不遮住對話。四模式編號固定為1–4；僅Option1顯示緊湊的「個人化男聲／個人化女聲」選單，預設男聲，連線期間停用；Option4 REST／SDK維持男聲。
 
 四種模式均保留畫面原始來源與引用，但送往朗讀／語音前端的回答會移除明確標記的來源行、來源清單中的網址／檔名及引用標記。合成資料、未核驗限制、金額／期限及交易警語仍保留；不刪除回答正文。模式2／3另指示前端不朗讀或補出來源，模型自行改述仍需真人驗收，不能保證逐字朗讀。
 
 ### 選項4：REST對照組／SDK串流辨識切換
 
-在選項4的「STT方式」選擇 **A REST API** 或 **B Speech SDK**，必須停止連線後才能切換。A保留既有24kHz麥克風→本機聲學VAD→16kHz短音訊REST，適合與選項1對照；沒有套用SDK的700ms屬性。B使用伺服器端`microsoft-cognitiveservices-speech-sdk`連續辨識及`PushAudioInputStream`，固定`zh-TW`，可選`Speech_SegmentationSilenceTimeoutMs` 700／1000ms及最多100個phrase（每行一詞，每詞100字）。不是語意VAD，也不新增業務代理。兩者使用同一四代理及既有REST SSML Personal Voice TTS，保留只讀交易限制。
+在選項4的「辨識方式」選擇 **A REST API** 或 **B Speech SDK**，必須停止連線後才能切換。A保留既有24kHz麥克風→本機聲學VAD→16kHz短音訊REST，適合與選項1對照；沒有套用SDK的700ms屬性。B使用伺服器端`microsoft-cognitiveservices-speech-sdk`連續辨識及`PushAudioInputStream`，固定`zh-TW`，可選`Speech_SegmentationSilenceTimeoutMs` 700／1000ms及最多100個phrase（每行一詞，每詞100字）。不是語意VAD，也不新增業務代理。兩者使用同一四代理及既有REST SSML Personal Voice TTS，保留只讀交易限制。
 
 SDK串流來源可選：
 - **即時麥克風**：24kHz瀏覽器PCM平均重取樣為16kHz mono PCM16，預設1280 bytes一包（40ms）。
@@ -89,7 +95,7 @@ WAV真正結束才關Push輸入，等待SDK尾端final；`session_stopped`只標
 
 SDK沿用後端既有`DIRECT_SPEECH_*`設定，無需修改`.env`或把key放入瀏覽器。Entra使用同資源custom domain、Speech scope與`aad#RESOURCE_ID#TOKEN`，約8分鐘更新recognizer token；key設定亦可。SDK telemetry已關閉。票券以strict schema綁定模式／取樣率／切段／phrase；瀏覽器不能指定endpoint、token或工具權限。既有同旅程單連線、全域4連線、回合／音訊／背壓預算仍適用。套件安裝與mock SDK測試不證明資源的SDK串流認證、phrase品質或真人語音已成功，需另行live驗收。
 
-「11月15號／十一月十五日」可直接解析，會明說按今年或已給定年份；已過日期不暗中改成明年，無效日曆會自然澄清。「11月中」仍是模糊偏好，不猜成15日；「20號回來」依出發月／年，跨月不猜。找來回機票的任務會持續到必要條件補齊後自動查詢，不需再說「搜尋航班」；使用者說「預設經濟艙」就是明確艙等選擇。先展示合成去回時間，詳情分頁後才允許選班／同意。
+「11月15號／十一月十五日」可直接解析，會明說按今年或已給定年份；已過日期不暗中改成明年，無效日曆會自然澄清。「11月中」仍是模糊偏好，不猜成15日；「20號回來」依出發月／年，跨月不猜。找來回機票的任務會持續到必要條件補齊後自動查詢，不需再說「搜尋航班」；使用者說「預設經濟艙」就是明確艙等選擇。完整展示合成去回時間與候選後才允許選班，完整最新確認價呈現後才允許明確同意。
 
 2026-10-18日期修復：原本模型摘出「2026年11月15號去」時，後端把尾端「去」誤當不可解析而一直追問。現在先從原文抽取日期token與去／回角色，保留`dateEvidence`的raw、canonical date、status與yearSource；同一句去回兩日期、中文數字、空白標點均走同一解析。`26年`按當前世紀解讀為2026並明說，不猜下世紀。舊版留下的有效但未解析偏好可在下一句自然回覆時修復；不相關的無法解析片段不清掉已確認日期。`GET /api/health`的`build`為啟動時程式SHA-256短碼，可辨識實際載入版本，健康回應不是雲端連線保證。
 

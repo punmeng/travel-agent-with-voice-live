@@ -93,7 +93,7 @@ test(`microphone user gesture, transcript rendering, mute, stop and track/contex
     window.__voiceSocket.receive({ type: 'interrupted' });
     window.__voiceSocket.receive({ type: 'superseded', turnId: 'synthetic-ui' });
   }, Buffer.alloc(96000).toString('base64'));
-  expect(await page.evaluate(() => window.__stoppedPlayback)).toBe(1);
+  expect(await page.evaluate(() => window.__stoppedPlayback)).toBe(2);
   await expect(page.locator('#messages')).toContainText('已由後續更正取代');
   await expect(page.locator('#voice-status')).toContainText('已收到更正');
   await page.evaluate(() => {

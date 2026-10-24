@@ -1,9 +1,11 @@
 {
   "name": "meihao-airlines-travel-planner",
-  "version": "0.1.0",
+  "version": "1.0.6",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "generate": "node scripts/generate.js",
@@ -13,7 +15,7 @@
     "ingest:knowledge": "node --env-file-if-exists=.env scripts/ingest-knowledge.js --apply",
     "mcp": "node mcp.js",
     "test": "node --test tests/*.test.js",
-    "check": "node --check server.js && node --check lib/core.js && node --check lib/agents.js && node --check lib/foundry.js && node --check lib/conversation.js && node --check lib/checkout.js && node --check lib/voice.js && node --check lib/replies.js && node --check lib/limits.js && node --check scripts/prepare-knowledge.js && node --check scripts/ingest-knowledge.js && node --check scripts/enable-conversation.js && node --check scripts/smoke-conversation.js && node --check scripts/smoke-voice.js && node --check scripts/smoke-airport-dialogue.js && node --check scripts/smoke-flight-knowledge.js && node --check public/app.js && node --check public/voice.js && node --check public/waiting.js && node --check public/audio-worklet.js",
+    "check": "node --check server.js && node --check lib/core.js && node --check lib/journey.js && node --check lib/agents.js && node --check lib/foundry.js && node --check lib/conversation.js && node --check lib/checkout.js && node --check lib/voice.js && node --check lib/replies.js && node --check lib/limits.js && node --check scripts/prepare-knowledge.js && node --check scripts/ingest-knowledge.js && node --check scripts/enable-conversation.js && node --check scripts/smoke-conversation.js && node --check scripts/smoke-voice.js && node --check scripts/smoke-airport-dialogue.js && node --check scripts/smoke-flight-knowledge.js && node --check public/app.js && node --check public/voice.js && node --check public/waiting.js && node --check public/audio-worklet.js",
     "test:voice:live": "node --env-file=.env scripts/smoke-voice.js --apply",
     "test:ui": "playwright test",
     "check:mapping-voice": "node --check lib/city-airports.js && node --check lib/speech.js && node --check lib/speech-sdk.js && node --check public/speech-input.js && node --check lib/gpt-live.js && node --check lib/direct-speech.js && node --check lib/pcm-vad.js && node --check lib/voice-metrics.js && node --check scripts/import-city-airports.js && node --check scripts/create-mapping-template.js && node --check scripts/add-city-tool.js && node --check scripts/configure-personal-voice.js && node --check scripts/smoke-voice-output.js"
@@ -25,5 +27,7 @@
     "ws": "^8.18.3",
     "zod": "^3.25.76"
   },
-  "devDependencies": { "@playwright/test": "^1.56.0" }
+  "devDependencies": {
+    "@playwright/test": "^1.56.0"
+  }
 }

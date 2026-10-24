@@ -7,8 +7,8 @@ import { AppError, createSession, callTool } from '../lib/core.js';
 import { chat } from '../lib/agents.js';
 import { createApp } from '../server.js';
 import { readAll } from './reply-helper.js';
-import { countWords } from '../lib/replies.js';
 import { speechText } from '../lib/speech.js';
+import { MAX_VOICE_INPUT_BYTES } from '../lib/limits.js';
 
 const env = { APP_MODE: 'mock', VOICE_LIVE_ENABLED: 'true', VOICE_LIVE_ENDPOINT: 'https://demo.services.ai.azure.com/', FOUNDRY_AUTH_MODE: 'azure-cli' };
 class Socket extends EventEmitter {
@@ -20,8 +20,113 @@ class Socket extends EventEmitter {
   event(event) { this.emit('message', Buffer.from(JSON.stringify(event)), false); }
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
+test('Option1 acknowledges received PCM, including muted packets, without relaxing input guards', () => {
+  const t = setup();
+  try {
+    assert.deepEqual(t.client.sent.find(event => event.type === 'ready').inputFlow, { maxUnackedBytes: 12288 });
+    t.client.emit('message', Buffer.alloc(4096), true);
+    assert.deepEqual(t.client.sent.at(-1), { type: 'inputAudioAck', receivedBytes: 4096 });
+    const appends = t.upstream.sent.filter(event => event.type === 'input_audio_buffer.append').length;
+    t.client.event({ type: 'mute', muted: true });
+    t.client.emit('message', Buffer.alloc(4096), true);
+    assert.deepEqual(t.client.sent.at(-1), { type: 'inputAudioAck', receivedBytes: 8192 });
+    assert.equal(t.upstream.sent.filter(event => event.type === 'input_audio_buffer.append').length, appends);
+    t.client.event({ type: 'mute', muted: false });
+    t.client.emit('message', Buffer.alloc(4096), true);
+    assert.deepEqual(t.client.sent.at(-1), { type: 'inputAudioAck', receivedBytes: 12288 });
+  } finally { t.bridge.stop(); }
+});
+test('Option1 real-time silence and multi-turn output do not consume an input rate budget twice', async context => {
+  context.mock.timers.enable({ apis: ['Date'], now: 1000 });
+  const t = setup();
+  let appends = 0;
+  t.upstream.send = value => { if (JSON.parse(value).type === 'input_audio_buffer.append') appends++; };
+  try {
+    const packet = Buffer.alloc(4096);
+    // Ten minutes of continuous silence, in the actual 2048-sample worklet packet size.
+    for (let i = 0; i < 7031; i++) {
+      context.mock.timers.tick(4096 / 48);
+      t.client.emit('message', packet, true);
+    }
+    assert.equal(appends, 7031);
+    for (let turn = 0; turn < 5; turn++) {
+      await t.say('你好你聽得到我說話嗎？');
+      t.upstream.event({ type: 'response.created', response: { id: `answer-${turn}` } });
+      const audio = Buffer.alloc(48000).toString('base64');
+      // 45s output burst has no effect on the independent microphone input counters.
+      for (let i = 0; i < 45; i++) t.upstream.event({ type: 'response.audio.delta', response_id: `answer-${turn}`, delta: audio });
+      context.mock.timers.tick(86);
+      t.client.emit('message', packet, true);
+    }
+    assert.equal(appends, 7036);
+    assert.equal(t.client.sent.filter(e => e.type === 'error').length, 0);
+    assert.equal(t.client.readyState, WebSocket.OPEN);
+  } finally { t.bridge.stop(); }
+});
+test('Option1 preserves exact aggregate/rate/backpressure limits and reports only safe numeric reason metadata', context => {
+  context.mock.timers.enable({ apis: ['Date'], now: 1000 });
+  const logs = [], original = console.error;
+  console.error = value => logs.push(JSON.parse(value));
+  try {
+    for (const reason of ['input_rate', 'upstream_backpressure', 'session_input']) {
+      const t = setup();
+      t.upstream.send = () => {};
+      try {
+        if (reason === 'input_rate') {
+          for (let i = 0; i < 36; i++) t.client.emit('message', Buffer.alloc(4096), true);
+        } else if (reason === 'upstream_backpressure') {
+          t.upstream.bufferedAmount = 1_000_001;
+          t.client.emit('message', Buffer.alloc(4096), true);
+        } else {
+          const packet = Buffer.alloc(48000);
+          for (let i = 0; i <= MAX_VOICE_INPUT_BYTES / packet.length; i++) {
+            context.mock.timers.tick(1000); t.client.emit('message', packet, true);
+          }
+        }
+        assert.equal(t.client.sent.at(-1).code, 'VOICE_AUDIO_LIMIT');
+        assert.equal(logs.at(-1).limitReason, reason);
+        assert.equal(logs.at(-1).mode, 'voice-live');
+        assert.equal(typeof logs.at(-1).inputBytes, 'number');
+        if (reason === 'input_rate') assert.equal(logs.at(-1).windowBytes, 147456);
+        if (reason === 'session_input') assert.equal(logs.at(-1).inputBytes, MAX_VOICE_INPUT_BYTES + 48000);
+      } finally { t.bridge.stop(); }
+    }
+    assert.doesNotMatch(JSON.stringify(logs), /token|transcript|private/);
+  } finally { console.error = original; }
+});
+test('Realtime greeting keeps only user content in tool input and returns a brief read-only reply', async () => {
+  const config = voiceModes({ ...env, VOICE_LIVE_REALTIME_ENABLED: 'true', VOICE_LIVE_REALTIME_MODEL: 'gpt-realtime-2.1' })['voice-realtime'];
+  const sessionUpdate = voiceSessionUpdate(config).session;
+  assert.match(sessionUpdate.instructions, /保留原意與疑問/);
+  assert.match(sessionUpdate.instructions, /"message":"你好你聽得到我說話嗎？"/);
+  assert.match(sessionUpdate.instructions, /detail=detailed/);
+  assert.match(sessionUpdate.tools[0].parameters.properties.message.description, /只填本次使用者說話的內容/);
+  const s = createSession();
+  const t = setup(s, {}, config);
+  try {
+    const message = '你好你聽得到我說話嗎？';
+    await t.say(message);
+    t.upstream.event({ type: 'response.created', response: { id: 'greeting' } });
+    t.upstream.event({ type: 'response.done', response: { id: 'greeting', status: 'completed', output: [
+      { type: 'function_call', status: 'completed', call_id: 'greeting-call', name: 'travel_backend',
+        arguments: JSON.stringify({ message }) }
+    ] } });
+    await tick();
+    assert.equal(t.client.sent.find(e => e.type === 'transcript').text, `需求摘要：${message}`);
+    const result = t.client.sent.find(e => e.type === 'result').result;
+    assert.equal(result.text, '您好，我收到您的訊息了。今天想聊什麼呢？');
+    assert.equal(result.state.activeAgent, 'intent');
+    assert.deepEqual(result.tools, []);
+    assert.deepEqual(s.history[0], { role: 'user', text: message });
+    assert.equal(s.trip, null);
+    assert.equal(s.bookings.size, 0);
+    const output = t.upstream.sent.find(e => e.item?.type === 'function_call_output');
+    assert.equal(JSON.parse(output.item.output).text, result.text);
+    assert.equal(t.upstream.sent.at(-1).response.tool_choice, 'none');
+  } finally { t.bridge.stop(); }
+});
 test('Realtime displays sources but only returns the source-free authoritative answer to the spoken frontend', async () => {
-  const canonical = '航班均為模擬，時間未核驗。\n\n知識來源（合成示範靜態快照）：flights.txt';
+  const canonical = '航班均為模擬，時間未核驗。有效至2026-10-23T16:21:06.754Z。\n\n知識來源（合成示範靜態快照）：flights.txt';
   const config = voiceModes({ ...env, VOICE_LIVE_REALTIME_ENABLED: 'true', VOICE_LIVE_REALTIME_MODEL: 'gpt-realtime-2.1' })['voice-realtime'];
   const t = setup(createSession(), { chat: async () => ({ text: canonical, state: { offers: [], activeAgent: 'flight' } }) }, config);
   try {
@@ -33,7 +138,7 @@ test('Realtime displays sources but only returns the source-free authoritative a
     await tick();
     assert.equal(t.client.sent.find(e => e.type === 'result').result.text, canonical);
     const output = t.upstream.sent.find(e => e.item?.type === 'function_call_output');
-    assert.equal(JSON.parse(output.item.output).text, '航班均為模擬，時間未核驗。');
+    assert.equal(JSON.parse(output.item.output).text, '航班均為模擬，時間未核驗。有效至台北時間二零二六年十月二十四日凌晨十二點二十一分。');
     assert.match(voiceSessionUpdate(config).session.instructions, /不要朗讀/);
   } finally { t.bridge.stop(); }
 });
@@ -82,15 +187,9 @@ function setup(s = createSession(), dependencies = {}, config = voiceConfig(env)
       await tick(); return client.sent.findLast(e => e.type === 'result');
     },
     async readAll(result) {
-      let next = result, pages = 0;
-      while (true) {
-        assert.ok(countWords(next.result.text) <= 50);
-        client.event({ type: 'displayed', turnId: next.turnId });
-        if (!next.result.state.moreReply) return next;
-        assert.ok(++pages < 100);
-        upstream.event({ type: 'conversation.item.input_audio_transcription.completed', item_id: `item-${++count}`, transcript: '繼續' });
-        await tick(); next = client.sent.findLast(e => e.type === 'result');
-      }
+      assert.equal(result.result.state.moreReply, false);
+      client.event({ type: 'displayed', turnId: result.turnId });
+      return result;
     },
     displayed(result) { client.event({ type: 'displayed', turnId: result.turnId }); }
   };
@@ -147,11 +246,13 @@ test('Realtime receives native model tool requests, delegates real travel backen
     await tick();
     assert.equal(t.s.turns, 1);
     assert.ok(t.client.sent.some(e => e.type === 'result'));
-    assert.equal(t.client.sent.find(e => e.type === 'transcript').text, '語音前端委派（非原始逐字稿）：我想去日本玩幾天');
+    assert.equal(t.client.sent.find(e => e.type === 'transcript').text, '需求摘要：我想去日本玩幾天');
     const output = t.upstream.sent.find(e => e.item?.type === 'function_call_output');
     assert.equal(output.item.call_id, 'call_1');
     assert.match(output.item.output, /日本/);
     assert.equal(t.upstream.sent.at(-1).response.tool_choice, 'none');
+    t.upstream.event({ type: 'response.created', response: { id: 'spoken-1' } });
+    t.upstream.event({ type: 'response.done', response: { id: 'spoken-1', status: 'completed' } });
     await t.say('重新報價');
     t.upstream.event({ type: 'response.created', response: { id: 'response_2' } });
     t.upstream.event({ type: 'response.done', response: { id: 'response_2', status: 'completed', output: [
@@ -250,6 +351,8 @@ test('Realtime refuses uncorrelated response completion and reused call IDs with
         t.upstream.event({ type: 'response.done', response: { id: 'r1', status: 'completed', output: [call] } });
         await tick();
         assert.equal(calls, 1);
+        t.upstream.event({ type: 'response.created', response: { id: 'spoken-1' } });
+        t.upstream.event({ type: 'response.done', response: { id: 'spoken-1', status: 'completed' } });
         await t.say('日本');
         t.upstream.event({ type: 'response.created', response: { id: 'r2' } });
       }
@@ -425,6 +528,145 @@ test('stopping Realtime cancels read-only delegated work without prematurely unl
     assert.equal(t.s.busy, false);
     assert.ok(!t.client.sent.some(e => e.type === 'result'));
   } finally { release?.(); t.bridge.stop(); }
+});
+test('Realtime interruption queues one committed utterance through delegation and backend completion without replaying tools', async () => {
+  const config = voiceModes({ ...env, VOICE_LIVE_REALTIME_ENABLED: 'true', VOICE_LIVE_REALTIME_MODEL: 'gpt-realtime-2.1' })['voice-realtime'];
+  let release, running = 0, maxRunning = 0;
+  const messages = [], writes = [];
+  const t = setup(createSession(), { chat: async (session, args, _env, deps) => {
+    running++; maxRunning = Math.max(maxRunning, running); messages.push(args.message);
+    try {
+      if (messages.length === 1) {
+        writes.push('original-tool-executed');
+        session.discovery.country = '日本';
+        await new Promise(resolve => { release = resolve; });
+        assert.equal(deps.signal.aborted, false, 'an interruption must not pretend to undo an executed tool');
+      }
+      return { text: '完成。', state: { offers: [], activeAgent: 'planner' } };
+    } finally { running--; }
+  } }, config);
+  const complete = (id, callId, message) => {
+    t.upstream.event({ type: 'response.created', response: { id } });
+    t.upstream.event({ type: 'response.done', response: { id, status: 'completed', output: [
+      { type: 'function_call', name: 'travel_backend', call_id: callId, arguments: JSON.stringify({ message }) }
+    ] } });
+  };
+  try {
+    await t.say('原需求');
+    t.upstream.event({ type: 'input_audio_buffer.speech_started' });
+    t.upstream.event({ type: 'input_audio_buffer.committed', item_id: 'queued-audio' });
+    t.upstream.event({ type: 'input_audio_buffer.committed', item_id: 'queued-audio' });
+    complete('delegate-1', 'call-1', '原需求');
+    await tick();
+    assert.equal(t.s.busy, true);
+    assert.deepEqual(messages, ['原需求']);
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.create').length, 1);
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.cancel').length, 0, 'finish a pending tool, not a fake cancellation');
+    release(); await tick();
+    assert.equal(t.s.discovery.country, '日本');
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.create').length, 2);
+    assert.equal(t.upstream.sent.filter(e => e.response?.tool_choice === 'none').length, 0, 'do not speak the old answer');
+    complete('delegate-2', 'call-2', '新需求');
+    await tick();
+    assert.deepEqual(messages, ['原需求', '新需求']);
+    assert.deepEqual(writes, ['original-tool-executed']);
+    assert.equal(maxRunning, 1);
+    assert.equal(t.upstream.sent.filter(e => e.item?.type === 'function_call_output').length, 2);
+    assert.equal(t.upstream.sent.filter(e => e.response?.tool_choice === 'none').length, 1);
+    assert.equal(t.client.sent.some(e => e.type === 'error'), false);
+    assert.equal(t.client.readyState, WebSocket.OPEN);
+  } finally { release?.(); t.bridge.stop(); }
+});
+test('Realtime backend completion during new speech waits for its commit before dispatch and never speaks stale output', async () => {
+  const config = voiceModes({ ...env, VOICE_LIVE_REALTIME_ENABLED: 'true', VOICE_LIVE_REALTIME_MODEL: 'gpt-realtime-2.1' })['voice-realtime'];
+  let release;
+  const t = setup(createSession(), { chat: async () => {
+    await new Promise(resolve => { release = resolve; });
+    return { text: '舊回答。', state: { offers: [] } };
+  } }, config);
+  try {
+    await t.say('原需求');
+    t.upstream.event({ type: 'response.created', response: { id: 'delegate' } });
+    t.upstream.event({ type: 'response.done', response: { id: 'delegate', status: 'completed', output: [
+      { type: 'function_call', name: 'travel_backend', call_id: 'original-call', arguments: '{"message":"原需求"}' }
+    ] } });
+    await tick();
+    t.upstream.event({ type: 'input_audio_buffer.speech_started' });
+    release(); await tick();
+    assert.equal(t.s.busy, false);
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.create').length, 1);
+    t.upstream.event({ type: 'input_audio_buffer.speech_stopped' });
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.create').length, 1);
+    t.upstream.event({ type: 'input_audio_buffer.committed', item_id: 'next' });
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.create').length, 2);
+    assert.equal(t.client.sent.some(e => e.type === 'error'), false);
+  } finally { release?.(); t.bridge.stop(); }
+});
+test('Realtime interruption waits for cancelled audio response termination, including late response.created, before next delegation', async () => {
+  const config = voiceModes({ ...env, VOICE_LIVE_REALTIME_ENABLED: 'true', VOICE_LIVE_REALTIME_MODEL: 'gpt-realtime-2.1' })['voice-realtime'];
+  const t = setup(createSession(), { chat: async () => ({ text: '舊回答。', state: { offers: [] } }) }, config);
+  try {
+    await t.say('原需求');
+    t.upstream.event({ type: 'response.created', response: { id: 'delegate' } });
+    t.upstream.event({ type: 'response.done', response: { id: 'delegate', status: 'completed', output: [
+      { type: 'function_call', name: 'travel_backend', call_id: 'original-call', arguments: '{"message":"原需求"}' }
+    ] } });
+    await tick();
+    t.upstream.event({ type: 'input_audio_buffer.speech_started' });
+    t.upstream.event({ type: 'input_audio_buffer.committed', item_id: 'next' });
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.create').length, 2);
+    t.upstream.event({ type: 'response.created', response: { id: 'late-old-audio' } });
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.cancel').length, 1);
+    t.upstream.event({ type: 'response.audio.delta', response_id: 'late-old-audio', delta: 'AAA=' });
+    assert.equal(t.client.sent.some(e => e.type === 'audio'), false);
+    t.upstream.event({ type: 'response.done', response: { id: 'late-old-audio', status: 'cancelled' } });
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.create').length, 3);
+    assert.deepEqual(t.upstream.sent.at(-1).response.tool_choice, { type: 'function', name: 'travel_backend' });
+    assert.equal(t.client.sent.some(e => e.type === 'error'), false);
+  } finally { t.bridge.stop(); }
+});
+test('Realtime queued interruptions remain bounded and stop discards the pending commit', async () => {
+  const config = voiceModes({ ...env, VOICE_LIVE_REALTIME_ENABLED: 'true', VOICE_LIVE_REALTIME_MODEL: 'gpt-realtime-2.1' })['voice-realtime'];
+  for (const overflow of [false, true]) {
+    const t = setup(createSession(), {}, config);
+    try {
+      await t.say('原需求');
+      t.upstream.event({ type: 'input_audio_buffer.speech_started' });
+      t.upstream.event({ type: 'input_audio_buffer.committed', item_id: 'pending' });
+      if (overflow) {
+        t.upstream.event({ type: 'input_audio_buffer.committed', item_id: 'excess' });
+        assert.equal(t.client.sent.at(-1).code, 'VOICE_PENDING_LIMIT');
+      } else t.bridge.stop();
+      t.upstream.event({ type: 'response.created', response: { id: 'stale' } });
+      assert.equal(t.upstream.sent.filter(e => e.type === 'response.create').length, 1);
+      assert.equal(t.s.busy, false);
+    } finally { t.bridge.stop(); }
+  }
+});
+test('Realtime interruption cancellation timeout closes safely without dispatching queued tools', async context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const config = voiceModes({ ...env, VOICE_LIVE_REALTIME_ENABLED: 'true', VOICE_LIVE_REALTIME_MODEL: 'gpt-realtime-2.1' })['voice-realtime'];
+  let calls = 0;
+  const t = setup(createSession(), { chat: async () => {
+    calls++; return { text: '回答。', state: { offers: [] } };
+  } }, config);
+  try {
+    await t.say('原需求');
+    t.upstream.event({ type: 'response.created', response: { id: 'delegate' } });
+    t.upstream.event({ type: 'response.done', response: { id: 'delegate', status: 'completed', output: [
+      { type: 'function_call', name: 'travel_backend', call_id: 'original-call', arguments: '{"message":"原需求"}' }
+    ] } });
+    await tick();
+    t.upstream.event({ type: 'response.created', response: { id: 'audio' } });
+    t.upstream.event({ type: 'input_audio_buffer.speech_started' });
+    t.upstream.event({ type: 'input_audio_buffer.committed', item_id: 'next' });
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.cancel').length, 1);
+    context.mock.timers.tick(20001);
+    assert.equal(t.client.sent.at(-1).code, 'VOICE_REALTIME_TIMEOUT');
+    assert.equal(t.upstream.sent.filter(e => e.type === 'response.create').length, 2);
+    assert.equal(calls, 1);
+    assert.equal(t.s.busy, false);
+  } finally { t.bridge.stop(); }
 });
 test('Voice Live uses documented exact-text synthesis with no automatic/competing model response', () => {
   assert.equal(voiceConfig({}), null);
@@ -699,10 +941,86 @@ test('voice and text share natural discovery, real handlers, displayed flight op
     assert.match(r.result.text, /\/checkout\/[a-f0-9]{64}/);
     assert.equal(r.result.receipt.total, exactQuote.total);
     const speak = t.upstream.sent.findLast(e => e.type === 'response.create');
-    assert.equal(speak.response.pre_generated_assistant_message.content[0].text, speechText(r.result.text));
+    assert.ok(speechText(r.result.text).startsWith(speak.response.pre_generated_assistant_message.content[0].text));
     assert.equal(s.bookings.size, 1);
     t.upstream.event({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'item-6', transcript: '我同意這個報價，請給我模擬結帳連結。' });
     await tick(); assert.equal(s.bookings.size, 1);
+  } finally { t.bridge.stop(); }
+});
+test('Option1 detailed answer automatically advances only after playback, then interruption/stop discard the queue', async () => {
+  const canonical = Array.from({ length: 5 }, (_, i) => `第${i + 1}天：已確認會議時段保留，前後建議安排餐食及休息；交通班次待確認。`).join('\n');
+  const t = setup(createSession(), { chat: async () => ({ text: canonical, speech: { text: canonical, detail: 'detailed' },
+    state: { activeAgent: 'planner', offers: [], moreReply: false } }) });
+  try {
+    const result = await t.say('五天全部展開');
+    assert.equal(result.result.text, canonical);
+    const spoken = [];
+    for (let index = 0; index < 48; index++) {
+      const request = t.upstream.sent.filter(e => e.type === 'response.create').at(-1);
+      spoken.push(request.response.pre_generated_assistant_message.content[0].text);
+      const count = t.upstream.sent.length;
+      t.upstream.event({ type: 'response.created', response: { id: 'spoken-' + index } });
+      t.upstream.event({ type: 'response.done', response: { id: 'spoken-' + index, status: 'completed' } });
+      const event = t.client.sent.at(-1);
+      if (event.type === 'audioDone') break;
+      assert.equal(event.type, 'audioSegmentDone');
+      assert.equal(t.upstream.sent.length, count, 'no synthesis before playback drains');
+      t.client.event({ type: 'segmentPlayed', turnId: 'stale-turn', segment: index });
+      assert.equal(t.upstream.sent.length, count);
+      t.client.event({ type: 'segmentPlayed', turnId: result.turnId, segment: index });
+    }
+    assert.equal(spoken.join(''), speechText(canonical));
+    assert.ok(spoken.length > 1);
+    await t.say('第二天詳細一點');
+    t.upstream.event({ type: 'response.created', response: { id: 'interrupted' } });
+    t.upstream.event({ type: 'response.done', response: { id: 'interrupted', status: 'completed' } });
+    const pending = t.client.sent.at(-1);
+    assert.equal(pending.type, 'audioSegmentDone');
+    t.upstream.event({ type: 'input_audio_buffer.speech_started' });
+    const count = t.upstream.sent.length;
+    t.client.event({ type: 'segmentPlayed', turnId: pending.turnId, segment: pending.segment });
+    assert.equal(t.upstream.sent.length, count, 'interruption removes pending segments');
+    t.bridge.stop();
+    assert.equal(t.s.voice, null);
+  } finally { t.bridge.stop(); }
+});
+test('Option1 exact summary/full-five-days/day2 dialogue shows full current answer and automatically speaks each requested detail', async () => {
+  const s = createSession();
+  for (const message of [
+    '東京出差五天，2026-11-12從桃園到成田，一位成人經濟艙，搜尋航班',
+    '第二天和第三天上午九點到下午五點在東京車站附近開會',
+    '第四天下午去淺草買伴手禮，少走路'
+  ]) await chat(s, { message }, { APP_MODE: 'mock' });
+  const t = setup(s);
+  const replies = [];
+  try {
+    for (const message of ['整理目前行程、建議行程和機票資訊', '五天全部展開', '第二天詳細一點']) {
+      const start = t.upstream.sent.filter(e => e.type === 'response.create').length;
+      const result = await t.say(message); replies.push(result.result);
+      assert.equal(result.result.state.moreReply, false);
+      assert.doesNotMatch(result.result.text, /說「繼續」/);
+      for (let index = 0; index < 48; index++) {
+        t.upstream.event({ type: 'response.created', response: { id: `${message}-${index}` } });
+        t.upstream.event({ type: 'response.done', response: { id: `${message}-${index}`, status: 'completed' } });
+        const event = t.client.sent.at(-1);
+        if (event.type === 'audioDone') break;
+        assert.equal(event.type, 'audioSegmentDone');
+        t.client.event({ type: 'segmentPlayed', turnId: event.turnId, segment: event.segment });
+      }
+      const spoken = t.upstream.sent.filter(e => e.type === 'response.create').slice(start)
+        .map(e => e.response.pre_generated_assistant_message.content[0].text).join('');
+      assert.equal(spoken, speechText(result.result.speech.text));
+      t.displayed(result);
+    }
+    assert.match(replies[0].text, /第 5 天[\s\S]*DEMO-FLT-/);
+    assert.ok(replies[0].speech.text.length < replies[0].text.length / 2);
+    assert.match(replies[1].text, /第 2 天.*09:00–17:00/);
+    assert.match(replies[1].text, /第 5 天/);
+    assert.match(replies[2].text, /^第 2 天.*09:00–17:00/);
+    assert.doesNotMatch(replies[2].text, /第 [1345] 天/);
+    assert.equal(s.discovery.durationDays, 5);
+    assert.equal(s.discovery.planning.meetings.length, 2);
+    assert.equal(s.bookings.size, 0);
   } finally { t.bridge.stop(); }
 });
 test('unseen quote and stale delivered quote cannot be accepted by voice', async () => {
@@ -719,7 +1037,7 @@ test('unseen quote and stale delivered quote cannot be accepted by voice', async
     await t.say('我同意這個報價，請給我模擬結帳連結。');
     assert.equal(s.bookings.size, 0); assert.equal(s.consent, null);
     assert.equal(t.client.sent.at(-1).type, 'error');
-    assert.equal(t.client.sent.at(-1).code, 'QUOTE_NOT_PRESENTED');
+    assert.equal(t.client.sent.at(-1).code, stale ? 'QUOTE_NOT_PRESENTED' : 'QUOTE_CONTEXT_REQUIRED');
     assert.equal(s.voice, null); assert.equal(s.busy, false);
   }
 });
@@ -804,4 +1122,59 @@ test('HTTP/WS voice tickets are same-session, one-use, origin restricted and all
     }
     assert.equal(connections, 6);
   } finally { ws?.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
+});
+test('Option1 personal voice choice is allowlisted, connection scoped and keeps the male default', async () => {
+  const male = 'verified-male-asset', female = 'verified-female-asset';
+  const personalEnv = { ...env, VOICE_LIVE_VOICE_TYPE: 'azure-personal',
+    VOICE_LIVE_PERSONAL_VOICE_MODEL: 'DragonLatestNeural',
+    VOICE_LIVE_PERSONAL_VOICE_NAME: male, VOICE_LIVE_PERSONAL_VOICE_ATHENA_NAME: female };
+  const upstreams = [], clients = [];
+  const server = createApp(personalEnv, { voice: {
+    credential: { getToken: async () => ({ token: 'test-token' }) },
+    connect: () => {
+      const socket = new Socket(); upstreams.push(socket);
+      setImmediate(() => { socket.emit('open'); socket.event({ type: 'session.updated' }); });
+      return socket;
+    }
+  } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const bootstrap = async () => {
+      const response = await fetch(`${base}/api/bootstrap`);
+      const data = await response.json();
+      assert.deepEqual(data.voice.personalVoices, [{ key: 'alexpun', label: '男聲' }, { key: 'athena', label: '女聲' }]);
+      assert.equal(data.voice.defaultPersonalVoice, 'alexpun');
+      assert.doesNotMatch(JSON.stringify(data), /verified-male-asset|verified-female-asset/);
+      return response.headers.get('set-cookie').split(';')[0];
+    };
+    const a = await bootstrap(), b = await bootstrap();
+    const post = (cookie, data) => fetch(`${base}/api/voice/session`, {
+      method: 'POST', headers: { cookie, origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+    });
+    for (const data of [
+      { personalVoiceKey: female }, { personalVoiceKey: '__proto__' }, { personalVoiceKey: {} },
+      { mode: 'speech-direct', personalVoiceKey: 'athena' },
+      { mode: 'voice-realtime', personalVoiceKey: 'athena' },
+      { mode: 'gpt-live', personalVoiceKey: 'athena' }
+    ]) {
+      const response = await post(a, data);
+      assert.equal(response.status, 400);
+      assert.equal((await response.json()).error, 'VOICE_SELECTION');
+    }
+    for (const [cookie, data] of [[a, { personalVoiceKey: 'athena' }], [b, {}]]) {
+      const response = await post(cookie, data); assert.equal(response.status, 200);
+      const ticket = await response.json();
+      assert.doesNotMatch(JSON.stringify(ticket), /verified-|athena|alexpun/);
+      const ws = new WebSocket(base.replace('http:', 'ws:') + ticket.path,
+        [ticket.protocol, ticket.nonce], { headers: { origin: base, cookie } });
+      clients.push(ws); await once(ws, 'message');
+    }
+    assert.equal(upstreams[0].sent[0].session.voice.name, female);
+    assert.equal(upstreams[1].sent[0].session.voice.name, male);
+    assert.equal(personalEnv.VOICE_LIVE_PERSONAL_VOICE_NAME, male);
+  } finally {
+    for (const ws of clients) { const closed = once(ws, 'close'); ws.send(JSON.stringify({ type: 'stop' })); await closed; }
+    server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
+  }
 });

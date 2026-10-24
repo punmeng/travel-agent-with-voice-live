@@ -24,11 +24,12 @@ const files = {
   '/style.css': ['style.css', 'text/css; charset=utf-8']
 };
 const idSchema = z.object({ offerId: z.string().uuid() }).strict();
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 const themeScript = readFileSync(new URL('./public/index.html', import.meta.url), 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 const themeHash = createHash('sha256').update(themeScript.replace(/\r\n?/g, '\n')).digest('base64');
-const build = createHash('sha256').update(['./server.js', './lib/conversation.js', './lib/agents.js', './lib/voice.js',
-  './lib/speech.js', './lib/speech-sdk.js', './lib/gpt-live.js', './lib/direct-speech.js', './lib/pcm-vad.js', './lib/voice-metrics.js', './lib/city-airports.js', './data/cities.json',
-  './public/app.js', './public/voice.js', './public/speech-input.js', './public/agent-status.js', './public/index.html', './public/style.css']
+const build = createHash('sha256').update(['./server.js', './package.json', './lib/core.js', './lib/replies.js', './lib/limits.js', './lib/conversation.js', './lib/agents.js', './lib/voice.js',
+  './lib/speech.js', './lib/speech-sdk.js', './lib/gpt-live.js', './lib/direct-speech.js', './lib/pcm-vad.js', './lib/voice-metrics.js', './lib/city-airports.js', './lib/journey.js', './lib/foundry.js', './data/cities.json',
+  './public/app.js', './public/voice.js', './public/audio-worklet.js', './public/speech-input.js', './public/agent-status.js', './public/index.html', './public/style.css']
   .map(file => readFileSync(new URL(file, import.meta.url))).reduce((text, bytes) => text + bytes.toString('utf8'), '') +
   JSON.stringify(cityResolver.snapshot)).digest('hex').slice(0, 16);
 export function createApp(env = process.env, dependencies = {}) {
@@ -61,7 +62,7 @@ export function createApp(env = process.env, dependencies = {}) {
         return;
       }
       if (url.pathname === '/api/health' && req.method === 'GET') return send(200, {
-        ok: true, mode: env.APP_MODE ?? 'mock', build, voice: { available: voice.available, type: voice.type, modes: voice.modes }
+        ok: true, version, mode: env.APP_MODE ?? 'mock', build, voice: { available: voice.available, type: voice.type, modes: voice.modes }
       });
       if (!url.pathname.startsWith('/api/') && !/^\/checkout\/[a-f0-9]{64}$/.test(url.pathname)) throw new AppError('NOT_FOUND', '找不到資源。', 404);
       if (req.method === 'POST' && req.headers.origin !== `http://${req.headers.host}`) throw new AppError('ORIGIN_FORBIDDEN', '請從本機應用程式送出請求。', 403);
@@ -84,9 +85,11 @@ export function createApp(env = process.env, dependencies = {}) {
       }
       if (req.method === 'GET' && url.pathname === '/api/bootstrap') return send(200, {
         airports, metadata: network.metadata, state: replyState(session, publicState(session)), history: session.history,
-        mode: env.APP_MODE ?? 'mock',
+        mode: env.APP_MODE ?? 'mock', version,
         pending: session.busy,
-        voice: { available: voice.available, type: voice.type, modes: voice.modes, state: voice.available ? 'ready-to-connect' : 'configuration-required',
+        voice: { available: voice.available, type: voice.type, modes: voice.modes,
+          ...(voice.personalVoices ? { personalVoices: voice.personalVoices, defaultPersonalVoice: voice.defaultPersonalVoice } : {}),
+          state: voice.available ? 'ready-to-connect' : 'configuration-required',
           message: voice.available ? '四種比較方式共用四代理與模擬庫存。GPT-Live與GPT-Realtime前端不處理交易，語音可能改述，請以畫面為準；未設定模式不可用。' : '語音尚未啟用，未要求麥克風權限。請參閱 docs/FOUNDRY.md。' }
       });
       if (req.method === 'GET' && url.pathname === '/api/progress') {

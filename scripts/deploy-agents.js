@@ -2,6 +2,7 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { AzureCliCredential } from '@azure/identity';
+import { answerPolicy } from '../lib/foundry.js';
 
 const shared = `你是「梅好 Airlines」旅程協作團隊的一員，以繁體中文簡潔回答。梅好 Airlines 是本專案的虛構示範品牌；這不是任何航空公司的官方服務。由應用程式後端進行四角色協調，不是 Foundry 自動 A2A。
 所有業務選擇只透過聊天：不產生可點選卡片、按鈕、表單或假語音功能。行程用文字段落，航班用編號文字清單。不得要求姓名、護照、信用卡等個資。
@@ -23,7 +24,7 @@ export const agentNames = {
 export function buildDefinitions(manifest, model) {
   if (model !== 'gpt-5.4') throw new Error('Only the explicitly approved existing deployment gpt-5.4 is allowed.');
   return Object.fromEntries(Object.entries(agentNames).map(([role, name]) => [role, {
-    name, definition: { kind: 'prompt', model, instructions: `${shared}\n\n${roleInstructions[role]}`, tools: manifest.roles[role] }
+    name, definition: { kind: 'prompt', model, instructions: `${shared}\n\n${roleInstructions[role]}\n\n${answerPolicy}`, tools: manifest.roles[role] }
   }]));
 }
 export async function deployAgents({ endpoint, approvedEndpoint = process.env.FOUNDRY_APPROVED_PROJECT_ENDPOINT, definitions, token, fetcher = fetch, record = () => {} }) {

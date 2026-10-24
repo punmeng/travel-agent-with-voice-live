@@ -15,7 +15,8 @@ const messages = [
 ];
 for (const message of messages) {
   const result = await chat(session, { message }, process.env);
-  assert.ok(countWords(result.text) <= 50);
+  assert.ok(result.text.trim());
+  assert.equal(result.state.moreReply, false);
   turns.push({ message, text: result.text, words: countWords(result.text), role: result.state.activeAgent });
   if (message.startsWith('11月15')) {
     assert.equal(session.draft.date, '2026-11-15');

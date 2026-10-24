@@ -112,6 +112,7 @@ h1 span { color: var(--cp-accent); }
 .composer button { background: var(--cp-accent); color: var(--cp-accent-fg); border-color: var(--cp-accent); width: 44px; flex-shrink: 0; font-size: 22px; }
 .composer-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .composer-foot small { color: var(--cp-text-soft); font-size: 10px; }
+.app-footer { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 4px 12px; flex-shrink: 0; padding: 4px 12px 8px; color: var(--cp-text-muted); background: var(--cp-bg-elevated); font-size: 10px; line-height: 1.5; text-align: center; }
 .voice { border: 0; background: var(--cp-bg-elevated); font-size: 12px; color: var(--cp-accent); padding-left: 0; }
 .voice span { display: block; font-size: 10px; color: var(--cp-text-soft); text-align: left; }
 label { display: block; color: var(--cp-text-muted); font-size: 12px; margin-bottom: 12px; }
@@ -136,7 +137,10 @@ dialog::backdrop { background: var(--cp-overlay); }
 #speech-options textarea { display: block; width: 100%; }
 #speech-finals, #speech-events { max-height: 180px; overflow: auto; padding-left: 24px; overflow-wrap: anywhere; font-size: 12px; }
 .voice-mode-label { margin: 8px 0 4px; }
-#voice-mode { max-width: 100%; padding: 8px; border: 1px solid var(--cp-border); border-radius: .625rem; background: var(--cp-surface); color: var(--cp-text); font: inherit; font-size: 12px; }
+.voice-mode-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+#voice-mode { flex: 1 1 320px; min-width: 0; }
+#personal-voice { flex: 0 0 auto; }
+#voice-mode, #personal-voice { max-width: 100%; padding: 8px; border: 1px solid var(--cp-border); border-radius: .625rem; background: var(--cp-surface); color: var(--cp-text); font: inherit; font-size: 12px; }
 #voice-caption { overflow-wrap: anywhere; }
 .agent-badge { padding: 2px 8px; border: 1px solid var(--cp-border); border-radius: .625rem; color: var(--cp-text-muted); background: var(--cp-surface-soft); font-size: 11px; }
 .agent-badge[data-status="processing"] { color: var(--cp-accent); border-color: var(--cp-accent); background: var(--cp-accent-soft); }

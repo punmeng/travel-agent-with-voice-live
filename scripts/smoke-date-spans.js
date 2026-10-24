@@ -36,7 +36,8 @@ try {
     assert.equal(session.draft.date, '2026-11-15');
     if (turns.length) assert.equal(session.draft.returnDate, '2026-11-20');
     assert.doesNotMatch(result.text, /哪天出發|哪一天出發|需要確定一天/);
-    assert.ok(countWords(result.text) <= 50);
+    assert.ok(result.text.trim());
+    assert.equal(result.state.moreReply, false);
     turns.push({ message, reply: result.text, words: countWords(result.text),
       date: session.draft.date, returnDate: session.draft.returnDate,
       dateEvidence: session.discovery.dateEvidence });

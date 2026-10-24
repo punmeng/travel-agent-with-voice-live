@@ -60,7 +60,7 @@ test('actual agent progress remains visible during text requests without opening
   await expect(page.locator('#voice-dialog')).toBeHidden();
   await expect(page.locator('#voice-agent')).toBeVisible();
   await expect(page.locator('#voice-agent')).toHaveText('旅遊規劃 · 處理中');
-  await expect(page.locator('#voice-agent')).toHaveAttribute('title', '旅遊規劃代理（planner）');
+  await expect(page.locator('#voice-agent')).toHaveAttribute('title', '旅遊規劃專員');
   release();
   await expect(page.locator('#send')).toBeEnabled();
   await expect(page.locator('#voice-agent')).toContainText('已完成');

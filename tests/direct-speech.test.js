@@ -29,6 +29,33 @@ class Socket extends EventEmitter {
   audio(bytes = speechInput()) { this.emit('message', bytes, true); }
 }
 const settle = async () => { for (let i = 0; i < 20; i++) await new Promise(resolve => setImmediate(resolve)); };
+test('REST and SDK detailed speech synthesize serial chunks, ignore stale playback acknowledgment and stop cleanly', async () => {
+  for (const sdk of [false, true]) {
+    const mock = mockSpeechSdk();
+    const text = '已確認第二天九點到十七點開會。建議會前用餐，會後休息；交通待確認。'.repeat(8);
+    const t = setup({ ...(sdk ? { speechSdk: mock.sdk, speechInput: speechInputSchema.parse({ stt: 'sdk' }) } : {}),
+      chat: async () => ({ text, speech: { text, detail: 'detailed' }, state: { offers: [], activeAgent: 'planner' } }) });
+    try {
+      if (sdk) {
+        await settle();
+        mock.instances[0].recognized(null, { result: { text: '第二天詳細一點', reason: 3, offset: 0, duration: 1000000 } });
+      } else { t.client.audio(); t.client.event({ type: 'finish' }); }
+      await settle();
+      assert.equal(t.client.sent.find(e => e.type === 'result').result.text, text);
+      const first = t.client.sent.find(e => e.type === 'audioSegmentDone');
+      assert.ok(first); assert.equal(t.session.busy, true);
+      assert.equal(t.requests.filter(r => r.url.pathname.startsWith('/tts/')).length, 1);
+      t.client.event({ type: 'segmentPlayed', turnId: 'stale', segment: first.segment }); await settle();
+      assert.equal(t.requests.filter(r => r.url.pathname.startsWith('/tts/')).length, 1);
+      t.client.event({ type: 'segmentPlayed', turnId: first.turnId, segment: first.segment }); await settle();
+      assert.equal(t.requests.filter(r => r.url.pathname.startsWith('/tts/')).length, 2);
+      t.bridge.stop(); await settle();
+      assert.equal(t.session.busy, false); assert.equal(t.session.voice, null);
+      assert.equal(t.client.sent.filter(e => e.type === 'error').length, 0);
+      assert.equal(t.requests.filter(r => r.url.pathname.startsWith('/tts/')).length, 2);
+    } finally { t.bridge.stop(); }
+  }
+});
 function setup(dependencies = {}) {
   const client = new Socket(), session = createSession(), requests = [];
   const bridge = bridgeDirectSpeech(client, session, env, directSpeechConfig(env), {
@@ -134,6 +161,40 @@ test('SDK final cannot execute transactions, and excessive queued finals fail ex
       assert.equal(t.requests.length, 0);
     } finally { release?.(); t.bridge.stop(); await settle(); }
   }
+});
+test('SDK microphone forwards trailing zero PCM, delegates only recognized finals and accepts the next utterance after playback resume', async () => {
+  const mock = mockSpeechSdk(), messages = [];
+  const t = setup({
+    speechSdk: mock.sdk, speechInput: speechInputSchema.parse({ stt: 'sdk', source: 'microphone', sampleRate: 16000 }),
+    chat: async (_session, args) => {
+      messages.push(args.message);
+      return { text: '完成。', state: { offers: [], activeAgent: 'planner' } };
+    }
+  });
+  try {
+    await settle();
+    const recognizer = mock.instances[0], stream = mock.streams[0];
+    for (let turn = 1; turn <= 2; turn++) {
+      const before = stream.packets.length;
+      t.client.audio(Buffer.alloc(1280, 1));
+      recognizer.recognizing(null, { result: { text: '未完成片段' } });
+      for (let packet = 0; packet < 18; packet++) t.client.audio(Buffer.alloc(1280));
+      await settle();
+      assert.equal(stream.packets.length, before + 19);
+      assert.ok(stream.packets.slice(-18).every(packet => new Uint8Array(packet).every(byte => byte === 0)));
+      assert.equal(messages.length, turn - 1, '720ms zero PCM and partial events must not invent a final');
+      recognizer.recognized(null, { result: { text: `第${turn}句`, reason: 3, offset: turn * 10000000, duration: 1000000 } });
+      await settle();
+      assert.deepEqual(messages, Array.from({ length: turn }, (_, i) => `第${i + 1}句`));
+      assert.equal(t.client.sent.filter(e => e.type === 'audioDone').length, turn);
+      const paused = stream.packets.length;
+      t.client.audio(Buffer.alloc(1280));
+      assert.equal(stream.packets.length, paused, 'do not recognize playback through the microphone');
+      t.client.event({ type: 'resume' });
+      assert.equal(t.client.sent.at(-1).state, 'listening');
+    }
+    assert.equal(t.client.sent.some(e => e.type === 'error'), false);
+  } finally { t.bridge.stop(); }
 });
 test('SDK HTTP tickets bind strict settings server-side and do not acquire credentials before upgrade', async () => {
   let auth = 0, socket;
@@ -250,6 +311,14 @@ test('direct Speech real search shares canonical offers and cannot reprice an ex
       flexibleDays: 0, budget: null, lowWalking: false });
     t.client.audio(); t.client.event({ type: 'finish' }); await settle();
     assert.ok(t.session.offers.size > 0);
+    const played = new Set();
+    while (!t.client.sent.some(e => e.type === 'audioDone')) {
+      const next = t.client.sent.find(e => e.type === 'audioSegmentDone' && !played.has(e.segment));
+      assert.ok(next, 'each next TTS waits for actual playback acknowledgment');
+      played.add(next.segment);
+      t.client.event({ type: 'segmentPlayed', turnId: next.turnId, segment: next.segment });
+      await settle();
+    }
     const offer = [...t.session.offers.values()][0];
     selectOffer(t.session, offer.id, now);
     await callTool(t.session, 'price', 'reprice_offer', { offerId: offer.id }, { now });

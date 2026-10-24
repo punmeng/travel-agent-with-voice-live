@@ -1,18 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { countWords } from '../../lib/replies.js';
+import { readFileSync } from 'node:fs';
+const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
 async function say(page, text) {
   await page.locator('#message').fill(text);
   await page.locator('#message').press('Enter');
   await expect(page.locator('#send')).toBeEnabled();
-  for (let i = 0; i < 100; i++) {
-    const more = await page.evaluate(async () => (await (await fetch('/api/bootstrap')).json()).state.moreReply);
-    if (!more || await page.locator('#error').isVisible()) break;
-    await page.locator('#message').fill('繼續');
-    await page.locator('#message').press('Enter');
-    await expect(page.locator('#send')).toBeEnabled();
-  }
+  const more = await page.evaluate(async () => (await (await fetch('/api/bootstrap')).json()).state.moreReply);
+  expect(more).toBe(false);
   const replies = await page.locator('.message.assistant > div > p:not(.speaker)').allTextContents();
-  for (const reply of replies) expect(countWords(reply)).toBeLessThanOrEqual(50);
+  for (const reply of replies) {
+    expect(countWords(reply)).toBeLessThanOrEqual(500);
+    expect(reply).not.toContain('說「繼續」看下一段');
+  }
 }
 test('desktop chat-only planning, selection, quote and confirmation with no choice controls', async ({ page }) => {
   const errors = [];
@@ -22,10 +22,10 @@ test('desktop chat-only planning, selection, quote and confirmation with no choi
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('#send')).toBeEnabled();
   await expect(page.locator('.rail, .steps, .conversation-head, .brand-mark')).toHaveCount(0);
-  await expect(page.locator('select:not(#voice-mode):not(#speech-options select), input:not(#voice-panel-height):not(#speech-options input), .card, [data-prompt], #trip-form')).toHaveCount(0);
+  await expect(page.locator('select:not(#voice-mode):not(#personal-voice):not(#speech-options select), input:not(#voice-panel-height):not(#speech-options input), .card, [data-prompt], #trip-form')).toHaveCount(0);
   await expect(page.locator('#voice-mode')).toHaveCount(1);
   await say(page, '從桃園到成田，2026-11-12，2 人，經濟艙，少步行，請規劃行程');
-  await expect(page.locator('#messages')).toContainText('東京・三日靈感提案');
+  await expect(page.locator('#messages')).toContainText('東京3天');
   await say(page, '搜尋航班，比較前後一天');
   await expect(page.locator('#messages')).toContainText('DEMO-FLT-');
   await expect(page.getByRole('button', { name: '選擇', exact: true })).toHaveCount(0);
@@ -44,8 +44,8 @@ test('desktop chat-only planning, selection, quote and confirmation with no choi
   await expect(page.locator('input, form')).toHaveCount(0);
   await page.getByRole('link', { name: '回到旅行對話' }).click();
   await expect(page.locator('#send')).toBeEnabled();
-  await expect(page.locator('select:not(#voice-mode):not(#speech-options select), input:not(#voice-panel-height):not(#speech-options input), .card, [data-prompt], #purchase')).toHaveCount(0);
-  await page.getByRole('button', { name: /Talk to agent/ }).click();
+  await expect(page.locator('select:not(#voice-mode):not(#personal-voice):not(#speech-options select), input:not(#voice-panel-height):not(#speech-options input), .card, [data-prompt], #purchase')).toHaveCount(0);
+  await page.locator('#voice').click();
   await expect(page.locator('#voice-dialog')).toContainText('尚未啟用');
   await expect(page.locator('#voice-start')).toBeDisabled();
   await page.getByRole('button', { name: '關閉，繼續文字規劃' }).click();
@@ -64,10 +64,30 @@ test('mobile partial chat setup, keyboard submission and recoverable retry', asy
   await expect(page.getByRole('alert')).toContainText('暫時無法連線');
   await page.unroute('**/api/chat');
   await page.getByRole('button', { name: '重試', exact: true }).click();
-  await expect(page.locator('#messages')).toContainText('東京・三日靈感提案');
+  await expect(page.locator('#messages')).toContainText('東京3天');
   await expect(page.getByRole('alert')).toBeHidden();
-  await expect(page.locator('select:not(#voice-mode):not(#speech-options select), input:not(#voice-panel-height):not(#speech-options input), .card, [data-prompt]')).toHaveCount(0);
+  await expect(page.locator('select:not(#voice-mode):not(#personal-voice):not(#speech-options select), input:not(#voice-panel-height):not(#speech-options input), .card, [data-prompt]')).toHaveCount(0);
   await page.screenshot({ path: 'test-results/mobile.png', fullPage: true });
+});
+test('central release version and requested footer remain visible below desktop and mobile controls', async ({ page }) => {
+  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport); await page.goto('/');
+    await expect(page.locator('#app-version')).toHaveText(`v${version}`);
+    await expect(page.locator('.app-footer')).toContainText('Powered by Microsoft Innovation Taipei');
+    const health = await (await page.request.get('/api/health')).json();
+    expect(health.version).toBe(version);
+    for (const open of [false, true]) {
+      if (open) await page.locator('#voice').click();
+      const bounds = await page.evaluate(() => ({
+        footer: document.querySelector('.app-footer').getBoundingClientRect().toJSON(),
+        composer: document.querySelector('.composer-area').getBoundingClientRect().toJSON(),
+        viewport: innerHeight, overflow: document.documentElement.scrollWidth > innerWidth
+      }));
+      expect(bounds.footer.top).toBeGreaterThanOrEqual(bounds.composer.bottom - 1);
+      expect(bounds.footer.bottom).toBeLessThanOrEqual(bounds.viewport + 1);
+      expect(bounds.overflow).toBe(false);
+    }
+  }
 });
 test('country-level inspiration and five-day plan never request codes or trigger a search', async ({ page }) => {
   await page.goto('/');

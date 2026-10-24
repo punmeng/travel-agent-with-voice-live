@@ -4,7 +4,7 @@ import { createAgentStatus } from './agent-status.js';
 const $ = id => document.getElementById(id);
 const agentStatus = createAgentStatus($('voice-agent'));
 const roles = { intent: '意圖協調師', planner: '旅遊規劃師', flight: '航班查詢師', price: '票價與購買師' };
-let state = null, loading = false, retryAction = null, voiceMessage = '', voiceActive = false;
+let state = null, loading = false, retryAction = null, voiceActive = false;
 const voiceTranscripts = new Map();
 const waiting = createWaitingNotice((visible, text) => { $('busy').textContent = visible ? text : '旅程團隊正在整理您的提案…'; });
 window.addEventListener('pagehide', () => waiting.clear());
@@ -67,7 +67,8 @@ async function run(action) {
   catch (error) { $('error').querySelector('span').textContent = `${error.message}${error.diagnostic ? `（${error.diagnostic}）` : ''}`; $('error').hidden = false; }
   finally { waiting.clear(); busy(false); }
 }
-function message(text, role = 'assistant', agent = 'intent') {
+function message(text, role = 'assistant', agent) {
+  if (role === 'user') text = text.replace(/^語音前端委派（非原始逐字稿）：/, '需求摘要：');
   const article = el('article', undefined, `message ${role}`);
   const content = el('div');
   const paragraph = el('p');
@@ -79,7 +80,7 @@ function message(text, role = 'assistant', agent = 'intent') {
     link.href = match[0]; paragraph.append(link); last = match.index + match[0].length;
   }
   paragraph.append(document.createTextNode(text.slice(last)));
-  content.append(el('p', role === 'user' ? '您' : roles[agent], 'speaker'), paragraph);
+  content.append(el('p', role === 'user' ? '您' : roles[agent] ?? '旅程助理', 'speaker'), paragraph);
   article.append(content); $('messages').append(article);
   return content;
 }
@@ -94,7 +95,8 @@ async function sendChat(text) {
   const q = state?.quote;
   // Capture the displayed context now, not at retry time or from a newer server quote.
   const request = {
-    message: text, requestId: crypto.randomUUID(),
+    message: text, ...(state?.textDelivery ? { delivery: 'text' } : {}),
+    requestId: crypto.randomUUID(), contextVersion: state?.contextVersion,
     offerIds: state?.offers.map(o => o.id) ?? [],
     quoteContext: q ? { quoteId: q.id, version: q.version, total: q.total, currency: q.currency, expiresAt: q.expiresAt } : null
   };
@@ -123,7 +125,7 @@ const voiceController = createVoiceController({
   onRecovered: data => {
     voiceTranscripts.clear();
     setState(data.state); $('messages').replaceChildren();
-    for (const entry of data.history ?? []) message(entry.text, entry.role);
+    for (const entry of data.history ?? []) message(entry.text, entry.role, entry.agent);
     scroll();
   },
   getDisplayedContext: () => ({
@@ -136,14 +138,17 @@ $('chat-form').addEventListener('submit', e => { e.preventDefault(); if (!loadin
 $('message').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('chat-form').requestSubmit(); } });
 $('retry').addEventListener('click', () => { if (retryAction) run(retryAction); });
 $('new-trip').addEventListener('click', () => run(async () => { await api('reset', {}); window.location.reload(); }));
-$('voice').addEventListener('click', () => { $('voice-message').textContent = voiceMessage; $('voice-dialog').hidden = false; });
+$('voice').addEventListener('click', () => {
+  $('voice-message').textContent = '航班與票價皆為合成示範，請以畫面內容為準。選班、報價及購買請使用文字對話。';
+  $('voice-dialog').hidden = false;
+});
 await run(async () => {
   const data = await api('bootstrap');
-  $('mode').textContent = data.mode === 'mock' ? 'AI mock · 旅遊／付款模擬' : 'AI live · 旅遊／付款模擬';
-  voiceMessage = data.voice.message;
-  $('voice').querySelector('span').textContent = data.voice.available ? '選擇語音管線' : '語音尚未設定';
+  if (data.version) { $('app-version').textContent = `v${data.version}`; $('app-version').hidden = false; }
+  $('mode').textContent = data.mode === 'mock' ? '旅遊規劃示範' : 'AI 旅遊規劃';
+  $('voice').querySelector('span').textContent = data.voice.available ? '選擇語音模式' : '語音尚未啟用';
   voiceController.configureModes(data.voice);
   setState(data.state);
-  for (const entry of data.history ?? []) message(entry.text, entry.role);
+  for (const entry of data.history ?? []) message(entry.text, entry.role, entry.agent);
   scroll();
 });

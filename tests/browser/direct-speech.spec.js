@@ -36,21 +36,22 @@ test(`direct Speech ${trigger} finish; half-duplex pauses uploads until playback
     'voice-live', 'voice-realtime', 'gpt-live', 'speech-direct'
   ]);
   await page.locator('#voice-mode').selectOption('speech-direct');
-  await expect(page.locator('#voice-comparison')).toContainText('完全不使用Voice Live');
+  await expect(page.locator('#voice-comparison')).toHaveCount(0);
+  await expect(page.locator('#voice-availability')).toBeHidden();
   expect(await page.evaluate(() => window.__micCalls)).toBe(0);
   await page.locator('#voice-start').click();
   await expect(page.locator('#voice-status')).toContainText('聆聽中');
-  await expect(page.locator('#voice-finish')).toBeEnabled();
+  await expect(page.locator('#voice-finish')).toBeHidden();
   await expect.poll(() => page.evaluate(() => window.__socket.binarySent)).toBeGreaterThan(0);
   if (trigger === 'manual') {
-    await page.locator('#voice-finish').click();
+    await page.locator('#voice-finish').evaluate(button => button.click());
     await expect.poll(() => page.evaluate(() => window.__socket.sent.filter(event => event.type === 'finish').length)).toBe(1);
   } else {
     await page.evaluate(() => window.__socket.receive({ type: 'state', state: 'thinking' }));
     expect(await page.evaluate(() => window.__socket.sent.filter(event => event.type === 'finish').length)).toBe(0);
   }
   await expect(page.locator('#voice-status')).toContainText('思考中');
-  await expect(page.locator('#voice-finish')).toBeDisabled();
+  await expect(page.locator('#voice-finish')).toBeHidden();
   const sent = await page.evaluate(() => window.__socket.binarySent);
   await page.waitForTimeout(250);
   expect(await page.evaluate(() => window.__socket.binarySent)).toBe(sent);
@@ -72,18 +73,18 @@ test(`direct Speech ${trigger} finish; half-duplex pauses uploads until playback
     window.__socket.receive({ type: 'audio', audio });
     window.__socket.receive({ type: 'audioDone' });
   }, Buffer.alloc(24000).toString('base64'));
-  await expect(page.locator('#voice-status')).toContainText('半雙工');
+  await expect(page.locator('#voice-status')).toContainText('結束後可繼續說話');
   await expect.poll(() => page.evaluate(() => window.__socket.sent.filter(event => event.type === 'resume').length)).toBe(1);
-  await expect(page.locator('#voice-finish')).toBeEnabled();
+  await expect(page.locator('#voice-finish')).toBeHidden();
   await page.locator('#voice-mute').click();
-  await expect(page.locator('#voice-finish')).toBeDisabled();
+  await expect(page.locator('#voice-finish')).toBeHidden();
   await page.locator('#voice-mute').click();
-  await expect(page.locator('#voice-finish')).toBeEnabled();
+  await expect(page.locator('#voice-finish')).toBeHidden();
   await page.evaluate(() => { window.__oldSocket = window.__socket; });
   await page.locator('#voice-stop').click();
   expect(await page.evaluate(() => window.__tracks.every(track => track.readyState === 'ended'))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.__contexts.every(context => context.state === 'closed'))).toBe(true);
-  await expect(page.locator('#voice-finish')).toBeDisabled();
+  await expect(page.locator('#voice-finish')).toBeHidden();
   await page.locator('#voice-start').click();
   await expect(page.locator('#voice-status')).toContainText('聆聽中');
   await page.evaluate(() => window.__oldSocket.receive({ type: 'state', state: 'thinking' }));
@@ -106,7 +107,7 @@ test(`Realtime2.1 comparison refuses old/missing model metadata (${configuredMod
   await page.goto('/'); await page.locator('#voice').click();
   await page.locator('#voice-mode').selectOption('voice-realtime');
   await expect(page.locator('#voice-start')).toBeDisabled();
-  await expect(page.locator('#voice-availability')).toContainText(configuredModel ?? '舊版服務');
+  await expect(page.locator('#voice-availability')).toHaveText('此語音模式尚未啟用，請選擇其他模式或聯絡管理員。');
   expect(await page.evaluate(() => window.__micCalls)).toBe(0);
 });
 }

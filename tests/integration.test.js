@@ -60,12 +60,8 @@ test('HTTP chat-only selection/reprice/confirmation, isolation and explicit erro
       const response = await rawPost(path, body, extra);
       if (path !== 'chat' || !response.ok) return response;
       const original = await response.json();
-      let next = original, pages = 0;
-      while (next.state.moreReply) {
-        assert.ok(++pages < 100);
-        next = await (await rawPost('chat', { message: '繼續' })).json();
-      }
-      return new Response(JSON.stringify({ ...original, state: next.state }));
+      assert.equal(original.state.moreReply, false);
+      return new Response(JSON.stringify(original));
     };
     let r = await post('chat', { message: '從桃園到成田，2026-11-12，2 人，經濟艙，查詢航班' });
     assert.equal(r.status, 200);
@@ -96,7 +92,7 @@ test('HTTP chat-only selection/reprice/confirmation, isolation and explicit erro
     r = await fetch(`${base}/api/select`, { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ offerId: offer.id }) });
     assert.equal(r.status, 404);
     const html = await fetch(base); assert.match(html.headers.get('content-security-policy'), /sha256-/);
-    assert.match(await html.text(), /Talk to agent/);
+    assert.match(await html.text(), /語音對話/);
     const page = await (await fetch(base)).text();
     const speechOptions = page.match(/<fieldset id="speech-options"[^>]*>[\s\S]*?<\/fieldset>/)?.[0];
     assert.ok(speechOptions, 'SDK input settings must remain inside the voice fieldset');

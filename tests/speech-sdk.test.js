@@ -1,11 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { createSpeechRecognition, speechInputSchema } from '../lib/speech-sdk.js';
 import { mockSpeechSdk } from './mock-speech-sdk.js';
 import { readPcmWav, replayPcm, resampleMicrophone } from '../public/speech-input.js';
 
 const config = { endpoint: 'https://offline.cognitiveservices.azure.com', resourceId: '/private-resource' };
 const options = speechInputSchema.parse({ stt: 'sdk', sampleRate: 8000, phrases: ['梅好', '梅好'], silenceMs: 700 });
+test('Node Speech SDK uses redirect-capable npm WebSocket for Azure custom endpoint redirects', () => {
+  const require = createRequire(import.meta.url);
+  const { WebsocketMessageAdapter } = require('microsoft-cognitiveservices-speech-sdk/distrib/lib/src/common.browser/WebsocketMessageAdapter.js');
+  assert.equal(WebsocketMessageAdapter.forceNpmWebSocket, true);
+});
 function setup(extra = {}) {
   const mock = mockSpeechSdk(), events = [], finals = [], failures = [];
   const adapter = createSpeechRecognition(config, options, {
@@ -30,6 +36,7 @@ test('continuous recognizer uses exact endpoint, private Entra auth, PCM format,
   try {
     await t.adapter.start();
     assert.equal(t.configs[0].endpoint.href, 'wss://offline.cognitiveservices.azure.com/stt/speech/recognition/conversation/cognitiveservices/v1');
+    assert.equal(t.configs[0].key, undefined, 'Entra mode must not pass an empty auth string');
     assert.equal(t.configs[0].authorizationToken, 'aad#/private-resource#private-token');
     assert.equal(t.configs[0].speechRecognitionLanguage, 'zh-TW');
     assert.equal(t.configs[0].properties.silence, '700');
@@ -76,6 +83,27 @@ test('stop during Entra acquisition prevents stale recognizer startup', async ()
   t.adapter.close(); release({ token: 'private' }); await starting;
   assert.equal(t.instances.length, 0);
   assert.equal(t.events.length, 0);
+});
+test('SDK startup failures expose safe auth, endpoint, and timeout categories without provider details', async () => {
+  for (const [error, expected] of [
+    [new Error('WebSocket upgrade failed: 403 Forbidden; token=private-value'), 'SPEECH_SDK_AUTH'],
+    [new Error('WebSocket connection failed to private-endpoint'), 'SPEECH_SDK_CONNECTION'],
+    [new Error('Speech SDK start timeout'), 'SPEECH_SDK_TIMEOUT']
+  ]) {
+    const t = setup();
+    t.sdk.SpeechRecognizer.prototype.startContinuousRecognitionAsync = (_success, fail) => fail(error);
+    try {
+      await t.adapter.start();
+      assert.equal(t.failures.at(-1), expected);
+      assert.ok(!JSON.stringify([...t.events, ...t.failures]).includes('private'));
+    } finally { t.adapter.close(); }
+  }
+  const t = setup({ credential: { getToken: async () => { throw new Error('private identity detail'); } } });
+  try {
+    await t.adapter.start();
+    assert.equal(t.failures.at(-1), 'SPEECH_SDK_AUTH');
+    assert.ok(!JSON.stringify([...t.events, ...t.failures]).includes('private'));
+  } finally { t.adapter.close(); }
 });
 test('SDK updates recognizer authorization before expiry and refuses invalid result shape/timing', async context => {
   context.mock.timers.enable({ apis: ['setTimeout'] });

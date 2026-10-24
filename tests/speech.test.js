@@ -58,7 +58,7 @@ test('timezones get vetted geographic labels, checkout/URL tokens never enter sy
   const spoken = speechText(canonical);
   assert.match(spoken, /結帳連結已放在對話中/);
   assert.doesNotMatch(spoken, /Secret|checkout|a{10}|https/);
-  assert.match(spoken, /新臺幣一萬二千三百四十五元，版本一，有效至臺灣時間二零二六年十一月二十五日上午八點三十分/);
+  assert.match(spoken, /新臺幣一萬二千三百四十五元，版本一，有效至台北時間二零二六年十一月二十五日上午八點三十分/);
   assert.match(spoken, /不收款、不訂位、不開票/);
   assert.equal(speechText(`[結帳](/checkout/${token})`), '結帳連結已放在對話中');
   assert.equal(speechText('https://example.test/?token=123abc'), '連結已放在對話中');
@@ -79,6 +79,23 @@ test('month/day ranges speak natural Mandarin dates without reinterpreting codes
     assert.doesNotMatch(speechText(nonDate), /月.*號到/);
   }
   assert.equal(speechText('https://example.test/11/26–11/30?token=123'), '連結已放在對話中');
+});
+test('expiry speech uses Taipei minutes across UTC day boundaries and preserves canonical quote data', () => {
+  for (const [expiresAt, expected] of [
+    ['2026-10-23T15:21:06.754Z', '二零二六年十月二十三日晚上十一點二十一分'],
+    ['2026-10-23T16:00:59.999Z', '二零二六年十月二十四日凌晨十二點整'],
+    ['2026-12-31T18:05:12.123Z', '二零二七年一月一日凌晨二點五分'],
+    ['2026-10-23T23:21:06.754+08:00', '二零二六年十月二十三日晚上十一點二十一分']
+  ]) {
+    const quote = { expiresAt, version: 3, total: 8900, currency: 'TWD' };
+    const before = structuredClone(quote), canonical = `有效至 ${quote.expiresAt}。`;
+    const spoken = speechText(canonical);
+    assert.equal(spoken, `有效至 台北時間${expected}。`);
+    assert.doesNotMatch(spoken, /秒|毫秒|T|Z/);
+    assert.equal(speechText(spoken), spoken);
+    assert.equal(canonical, `有效至 ${expiresAt}。`);
+    assert.deepEqual(quote, before);
+  }
 });
 test('voice delivers canonical display facts and normalizes speech once without changing backend identifiers', async () => {
   class Socket extends EventEmitter {

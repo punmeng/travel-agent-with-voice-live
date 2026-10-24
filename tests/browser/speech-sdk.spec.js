@@ -19,7 +19,10 @@ async function sdkPage(page) {
     window.WebSocket = class {
       static OPEN = 1; readyState = 1; bufferedAmount = 0; packets = []; controls = [];
       constructor() { window.__socket = this; setTimeout(() => this.receive({ type: 'ready' }), 20); }
-      send(data) { if (typeof data === 'string') this.controls.push(JSON.parse(data)); else this.packets.push({ size: data.byteLength, at: performance.now() }); }
+      send(data) {
+        if (typeof data === 'string') this.controls.push(JSON.parse(data));
+        else this.packets.push({ size: data.byteLength, at: performance.now(), silent: new Uint8Array(data).every(value => value === 0) });
+      }
       receive(data) { this.onmessage?.({ data: JSON.stringify(data) }); }
       close() { this.readyState = 3; this.onclose?.(); }
     };
@@ -27,8 +30,9 @@ async function sdkPage(page) {
   await page.goto('/'); await expect(page.locator('#send')).toBeEnabled();
   await page.locator('#voice').click(); await page.locator('#voice-mode').selectOption('speech-direct');
   await expect(page.locator('#speech-stt')).toHaveValue('rest');
-  await expect(page.locator('#voice-finish')).not.toHaveAttribute('hidden');
+  await expect(page.locator('#voice-finish')).toBeHidden();
   await page.locator('#speech-stt').selectOption('sdk');
+  await page.getByText('進階辨識設定', { exact: true }).click();
   await expect(page.locator('#voice-finish')).toBeHidden();
   await page.locator('#speech-source').selectOption('wav');
 }
@@ -54,7 +58,7 @@ for (const rate of [8000, 16000]) {
       }
     });
     await expect(page.locator('#speech-finals li')).toHaveCount(2);
-    await expect(page.locator('#speech-finals')).toContainText('offset 0 ms · duration 500 ms');
+    await expect(page.locator('#speech-finals')).toContainText('起點 0 ms · 長度 500 ms');
     const count = await page.evaluate(() => window.__socket.packets.length);
     await page.waitForTimeout(160);
     expect(await page.evaluate(() => window.__socket.packets.length)).toBe(count);
@@ -84,7 +88,28 @@ test('invalid SDK WAV is rejected before microphone, ticket or cloud and REST re
   expect(await page.evaluate(() => window.__microphoneCalls)).toBe(0);
   await page.locator('#speech-stt').selectOption('rest');
   await expect(page.locator('#speech-sdk-options')).toBeHidden();
-  await expect(page.locator('#voice-finish')).not.toHaveAttribute('hidden');
+  await expect(page.locator('#voice-finish')).toBeHidden();
+});
+test('SDK start failures are shown in voice status and diagnostic details without microphone access', async ({ page }) => {
+  await page.route('**/api/voice/session', route => route.fulfill({ json: {
+    protocol: 'journey-voice', nonce: 'a'.repeat(64), path: '/api/voice/stream'
+  } }));
+  await sdkPage(page);
+  await page.locator('#speech-source').selectOption('wav');
+  await page.locator('#speech-wav').setInputFiles({ name: 'test.wav', mimeType: 'audio/wav', buffer: wav(8000) });
+  await page.locator('#voice-start').click();
+  await expect(page.locator('#voice-status')).toContainText('連線中');
+  await expect.poll(() => page.evaluate(() => window.__socket?.readyState)).toBe(1);
+  await page.evaluate(() => window.__socket.receive({
+    type: 'error', code: 'SPEECH_SDK_CONNECTION',
+    message: '無法連線至Speech SDK串流端點；請檢查Speech資源端點與本機網路，未切換REST。',
+    correlationId: 'safe-test-id'
+  }));
+  await expect(page.locator('#voice-status')).toContainText('無法連線至語音服務');
+  await expect(page.locator('#voice-error')).toBeVisible();
+  await expect(page.locator('#voice-error')).toContainText('SPEECH_SDK_CONNECTION · safe-test-id');
+  await expect(page.locator('#voice-start')).toBeEnabled();
+  expect(await page.evaluate(() => window.__microphoneCalls)).toBe(0);
 });
 test('stopping WAV replay cancels its producer and ignores stale recognition events', async ({ page }) => {
   await page.route('**/api/voice/session', route => route.fulfill({ json: {
@@ -125,12 +150,14 @@ test('SDK microphone uses 16kHz fixed packets, pauses during half-duplex and nev
   await expect.poll(() => page.evaluate(() => window.__socket?.packets.length ?? 0)).toBeGreaterThan(0);
   expect(input.sampleRate).toBe(16000);
   expect(await page.evaluate(() => window.__socket.packets.every(p => p.size === 1280))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__socket.packets.filter(p => p.silent).length)).toBeGreaterThan(18);
   await page.evaluate(() => window.__socket.receive({ type: 'state', state: 'thinking' }));
   const count = await page.evaluate(() => window.__socket.packets.length);
   await page.waitForTimeout(160);
   expect(await page.evaluate(() => window.__socket.packets.length)).toBe(count);
   await page.evaluate(() => window.__socket.receive({ type: 'state', state: 'listening' }));
   await expect.poll(() => page.evaluate(() => window.__socket.packets.length)).toBeGreaterThan(count);
+  expect(await page.evaluate(() => window.__socket.packets.slice(-1)[0].silent)).toBe(true);
   await page.locator('#voice-mute').click();
   expect(await page.evaluate(() => window.__tracks.every(t => !t.enabled))).toBe(true);
   await page.locator('#voice-stop').click();

@@ -13,15 +13,10 @@ session.discovery.companions = '帶媽媽';
 session.discovery.durationDays = 5;
 const turns = [];
 for (const message of ['從台北出發，幫我找航班', '都可以。', '我說都可以，台北桃園或松山都可以。']) {
-  let result = await chat(session, { message }, process.env);
-  let text = '';
-  do {
-    assert.ok(countWords(result.text) <= 50);
-    turns.push({ message: text ? '繼續' : message, text: result.text, words: countWords(result.text) });
-    text += result.text;
-    if (!result.state.moreReply) break;
-    result = await chat(session, { message: '繼續' }, process.env);
-  } while (true);
+  const result = await chat(session, { message }, process.env), text = result.text;
+  assert.ok(text.trim());
+  assert.equal(result.state.moreReply, false);
+  turns.push({ message, text, words: countWords(text) });
   if (message.startsWith('從')) {
     assert.match(text, /桃園機場或松山機場/);
     assert.equal(session.discovery.airportQuestion.key, 'origin');

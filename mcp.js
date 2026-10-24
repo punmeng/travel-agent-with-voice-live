@@ -4,9 +4,11 @@ import { createSession, callTool, toolSchemas, selectOffer, setTrip } from './li
 import { ZodError } from 'zod';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 export function createMcpServer() {
-  const server = new McpServer({ name: 'meihao-airlines-mock', version: '0.1.0' });
+  const server = new McpServer({ name: 'meihao-airlines-mock', version });
   const session = createSession();
   for (const [name, schema] of Object.entries(toolSchemas)) {
     server.registerTool(name, {

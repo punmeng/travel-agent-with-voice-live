@@ -5,7 +5,6 @@ import { AzureCliCredential } from '@azure/identity';
 import { chat } from '../lib/agents.js';
 import { createSession } from '../lib/core.js';
 import { readCheckout } from '../lib/checkout.js';
-import { countWords } from '../lib/replies.js';
 
 if (!process.argv.includes('--apply')) throw new Error('--apply required: this executes authorized paid GPT-5.4 inference and file search.');
 const env = { ...process.env, APP_MODE: 'foundry' };
@@ -15,19 +14,12 @@ const report = { startedAt: new Date().toISOString(), model: 'gpt-5.4', syntheti
 const reportPath = new URL('../.foundry/live-smoke.json', import.meta.url);
 async function say(message) {
   const q = session.quote;
-  const first = await chat(session, {
+  const result = await chat(session, {
     message, requestId: randomUUID(), offerIds: [...session.offers.keys()],
     quoteContext: q ? { quoteId: q.id, version: q.version, total: q.total, currency: q.currency, expiresAt: q.expiresAt } : null
   }, env, { credential });
-  let result = first;
-  const texts = [result.text];
-  assert.ok(countWords(result.text) <= 50);
-  while (result.state.moreReply) {
-    result = await chat(session, { message: '繼續', requestId: randomUUID() }, env, { credential });
-    assert.ok(countWords(result.text) <= 50);
-    texts.push(result.text);
-  }
-  result = { ...first, text: texts.join('\n'), state: result.state };
+  assert.ok(result.text.trim());
+  assert.equal(result.state.moreReply, false);
   report.steps.push({ message, text: result.text, agent: result.state.activeAgent, discovery: result.state.discovery,
     draft: result.state.draft, offers: result.state.offers.length, quoteTotal: result.state.quote?.total ?? null });
   Object.assign(report, { cloudRequests: session.cloudRequests, cloudTokens: session.cloudTokens, evidence: session.cloudEvidence });

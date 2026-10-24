@@ -14,6 +14,23 @@ const context = s => ({
   } : null
 });
 const say = async (s, message, extra = {}) => readAll(s, await chat(s, { message, requestId: randomUUID(), ...context(s), ...extra }, env));
+test('greetings and audio checks bypass model work without changing trip, prices, or request idempotency', async () => {
+  const s = await ready();
+  const trip = structuredClone(s.trip), offers = [...s.offers.keys()];
+  for (const text of ['你好', '你好你聽得到我說話嗎？', '你好，你聽得到我說話嗎？', '你聽得到我的聲音嗎？']) {
+    const request = { message: text, requestId: randomUUID() };
+    const result = await chat(s, request, { APP_MODE: 'foundry' }, {
+      fetch: async () => { throw new Error('Greeting must not call a model'); }
+    });
+    assert.equal(result.text, '您好，我收到您的訊息了。今天想聊什麼呢？');
+    assert.equal(result.state.activeAgent, 'intent');
+    assert.deepEqual(result.tools, []);
+    assert.deepEqual(s.trip, trip);
+    assert.deepEqual([...s.offers.keys()], offers);
+    assert.equal(s.history.at(-2).text, text);
+    assert.deepEqual(await chat(s, request, { APP_MODE: 'foundry' }), result);
+  }
+});
 async function ready() {
   const s = createSession();
   await say(s, '從桃園到成田，2026-11-12，2 人，經濟艙，搜尋航班，前後一天');

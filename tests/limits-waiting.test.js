@@ -43,13 +43,13 @@ test('100 completed user turns are feasible above old cloud/token limits; failed
       output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify({
         role: 'intent', reply: '好的，想聊哪個旅行主題？', slots: mockUnderstanding(s, '')
       }) }] }] }) };
-  for (let i = 0; i < MAX_TURNS; i++) await chat(s, { message: '您好' }, env, dependencies);
+  for (let i = 0; i < MAX_TURNS; i++) await chat(s, { message: '想聊旅行主題' }, env, dependencies);
   assert.equal(s.turns, 100); assert.equal(s.cloudRequests, 100); assert.equal(s.cloudTokens, 500000);
   assert.ok(MAX_CLOUD_REQUESTS >= MAX_TURNS * 6);
   assert.ok(MAX_CLOUD_TOKENS >= MAX_TURNS * 24000);
-  await assert.rejects(chat(s, { message: '您好' }, env, dependencies), { code: 'TURN_LIMIT' });
+  await assert.rejects(chat(s, { message: '想聊旅行主題' }, env, dependencies), { code: 'TURN_LIMIT' });
   const failed = createSession();
-  await assert.rejects(chat(failed, { message: '您好' }, env, { ...dependencies,
+  await assert.rejects(chat(failed, { message: '想聊旅行主題' }, env, { ...dependencies,
     fetch: async () => new Response('{}', { status: 503 }) }), { code: 'FOUNDRY_UPSTREAM' });
   assert.equal(failed.turns, 0); assert.equal(failed.cloudRequests, 1);
 });

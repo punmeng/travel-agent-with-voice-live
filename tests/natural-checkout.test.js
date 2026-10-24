@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { chat } from '../lib/agents.js';
-import { createSession, callTool, consentToQuote, selectOffer, setTrip, purchase } from '../lib/core.js';
+import { createSession, callTool, selectOffer, setTrip } from '../lib/core.js';
 import { mockUnderstanding, applyUnderstanding, understandFoundry } from '../lib/conversation.js';
 import { checkoutForQuote, readCheckout, checkoutPage } from '../lib/checkout.js';
 import { readAll } from './reply-helper.js';
@@ -96,7 +96,7 @@ test('live interpretation is schema checked and evidence-bound, with no mock fal
   const fetcher = async (url, request) => {
     const body = JSON.parse(request.body);
     assert.equal(body.agent_reference.name, 'intent'); assert.equal(body.tool_choice, 'none');
-    assert.equal(body.text, undefined); assert.equal(body.reasoning, undefined);
+    assert.equal(body.text, undefined); assert.equal(body.instructions, undefined); assert.equal(body.reasoning, undefined);
     return new Response(JSON.stringify({ id: 'r', status: 'completed', usage: { total_tokens: 12 },
       output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(result) }] }] }));
   };

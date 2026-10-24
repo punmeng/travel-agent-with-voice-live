@@ -13,7 +13,7 @@
 1. **Voice Live `voice-live`**：`azure-speech` zh-TW STT → 外部同四代理 → `pre_generated` exact-text Personal Voice。`autoanswers=false`，沒有額外Voice Live GPT-5.4推理。
 2. **Voice Live `voice-realtime`**：指定`gpt-realtime-2.1`音訊原生前端 → 受控`travel_backend` → 同四代理 → `function_call_output` → Voice Live音訊。本次輸出是Azure標準`zh-TW-HsiaoChenNeural`，不是模型built-in；無STT配置，畫面委派需求標「模型整理」，非原話。
 3. **`gpt-live`**：獨立`gpt-live-1` API、built-in聲音 → client delegation → 同四代理。現接線靠timed user transcript定位委派，不是原音訊直交四代理；臺灣instructions不保證口音，也不能改為Personal Voice。
-4. **`speech-direct`**：A為原Speech REST 16kHz WAV zh-TW STT對照組；B為Speech SDK連續串流辨識（固定zh-TW、700／1000ms停頓切段及可選phrase list），可選即時麥克風或8／16kHz mono PCM16 WAV，以預設1280 bytes實時推送並顯示辨識事件與timing。兩者接同四代理及Speech REST SSML Personal Voice，完全不經Voice Live，用核准speakerProfileId與base model。REST按開始後先安靜約300ms，停頓約1秒自動送出，「提早送出」可選；最長28秒片段／server硬限30秒。SDK每個final辨識片段依序委派，不以session_stopped當語句完成。兩者均為聲學切段、非語意VAD，排程PCM播完才恢復收音，仍為半雙工；WAV上限120秒，非MRCP／RTP閘道。
+4. **`speech-direct`**：A為原Speech REST 16kHz WAV zh-TW STT對照組；B為Speech SDK連續串流辨識（固定zh-TW、700／1000ms停頓切段及可選phrase list），可選即時麥克風或8／16kHz mono PCM16 WAV，以預設1280 bytes實時推送並顯示辨識事件與timing。兩者接同四代理及Speech REST SSML Personal Voice，完全不經Voice Live，用核准speakerProfileId與base model。REST按開始後先安靜約300ms，停頓約1秒自動送出；最長28秒片段／server硬限30秒。SDK每個final辨識片段依序委派，不以session_stopped當語句完成。兩者均為聲學切段、非語意VAD，排程PCM播完才恢復收音，仍為半雙工；WAV上限120秒，非MRCP／RTP閘道。
 
 模式2／3／4後端禁止選班、reprice、同意及購買；這份四模式比較**全部唯讀**。想展示交易，先停止語音，於末尾另用文字示範。
 
@@ -31,7 +31,7 @@
 
 預期：intent／planner保留東京、五天、少步行、休息偏好；不從「帶媽媽」自猜人數或年齡，不強迫先填機場／日期才能規劃。五天不能少成三天；交通、無障礙、景點營業未即時核驗。
 
-回覆若分段，所有模式同樣說「繼續」讀完。canonical每則最多50 meaningful words，但模式2／3音訊可能改述；**畫面canonical才是業務依據**，不能假設模型照念。
+畫面一次顯示完整canonical，不說「繼續」。依序測「整理目前行程、建議行程和機票資訊」→「五天全部展開」→「第二天詳細一點」：摘要語音簡短、詳細自動接續、工作時段保留、指定日不改旅程天數。停止應清除待播段。模式2／3依後端完整資料生成語音；選班、報價與明確同意以畫面及權威quote context核對。
 
 ## 1:30–3:00｜同一個搜尋需求
 
@@ -88,5 +88,5 @@
 | 雲端權限／連線失敗 | 記錯誤code／numeric run ID，不貼token／音訊／原話；停止，不自動fallback或付費重試 |
 | 辨識／模型整理錯誤 | 按同一更正腳本重測，記漏slot／錯intent／多問次數；不能成交 |
 | GPT-Live untimed output | 明示連續PCM相容、不能還原省略靜音；不得補造input timing授權委派 |
-| Direct停頓／長句／噪音 | 聲學VAD停頓約1秒送出，短於200ms聲響不送；最長28秒片段／30秒硬限。測600ms自然停頓、安靜、穩定噪音與突發聲；漏觸／誤觸／截句都記錄，手動提早送出僅備援 |
+| Direct停頓／長句／噪音 | 聲學VAD停頓約1秒送出，短於200ms聲響不送；最長28秒片段／30秒硬限。測600ms自然停頓、安靜、穩定噪音與突發聲；漏觸／誤觸／截句都記錄 |
 | 回合額度用盡 | 共用100成功回合；不限制每旅程累計連線次數，新旅程會清狀態，對所有模式保持同條件 |

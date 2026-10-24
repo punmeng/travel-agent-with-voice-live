@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('pre-session selector explains differences and unconfigured GPT-Live cannot request microphone or a ticket', async ({ page }) => {
+test('pre-session selector omits internal exposition and unavailable modes cannot request microphone or a ticket', async ({ page }) => {
   let tickets = 0;
   await page.route('**/api/voice/session', async route => { tickets++; await route.abort(); });
   await page.addInitScript(() => {
@@ -11,18 +11,20 @@ test('pre-session selector explains differences and unconfigured GPT-Live cannot
   await page.locator('#voice').click();
   await page.locator('#voice-mode').selectOption('gpt-live');
   await expect(page.locator('#voice-title')).toHaveText('GPT-Live · gpt-live-1');
-  await expect(page.locator('#voice-comparison')).toContainText('非Personal Voice');
-  await expect(page.locator('#voice-comparison')).toContainText('四代理');
-  await expect(page.locator('#voice-availability')).toContainText('尚未設定');
+  await expect(page.locator('#voice-comparison')).toHaveCount(0);
+  await expect(page.locator('#voice-dialog')).not.toContainText('管線說明');
+  await expect(page.locator('#voice-dialog')).not.toContainText('尚未驗證');
+  await expect(page.locator('#voice-dialog')).not.toContainText('非品質排名');
+  await expect(page.locator('#voice-availability')).toContainText('尚未啟用');
   await expect(page.locator('#voice-start')).toBeDisabled();
   expect(await page.evaluate(() => window.__micCalls)).toBe(0);
   expect(tickets).toBe(0);
   await page.locator('#voice-mode').selectOption('voice-live');
-  await expect(page.locator('#voice-comparison')).toContainText('確切文字朗讀');
+  await expect(page.locator('#voice-comparison')).toHaveCount(0);
   for (const mode of ['voice-realtime', 'speech-direct']) {
     await page.locator('#voice-mode').selectOption(mode);
     await expect(page.locator('#voice-start')).toBeDisabled();
-    await expect(page.locator('#voice-availability')).toContainText(mode === 'speech-direct' ? '尚未設定' : '未啟用');
+    await expect(page.locator('#voice-availability')).toContainText('尚未啟用');
   }
   expect(await page.evaluate(() => window.__micCalls)).toBe(0);
   expect(tickets).toBe(0);
@@ -68,6 +70,7 @@ test(`configured GPT-Live uses selected ticket, captions, ${timing} audio, read-
   await page.goto('/'); await page.locator('#voice').click();
   await expect(page.locator('#voice-mode option[value="voice-live"]')).toHaveText('1 · Voice Live · GPT-5.4 + Personal Voice');
   await page.locator('#voice-mode').selectOption('gpt-live');
+  await expect(page.locator('#voice-availability')).toBeHidden();
   await page.locator('#voice-start').click();
   await expect(page.locator('#voice-status')).toContainText('聆聽中');
   expect(ticketMode).toBe('gpt-live');
@@ -89,13 +92,13 @@ test(`configured GPT-Live uses selected ticket, captions, ${timing} audio, read-
       s.receive({ type: 'audio', audio, startMs: 1200, endMs: 1300 });
     }
   }, timing);
-  await expect(page.locator('#voice-caption')).toContainText('非權威結果');
+  await expect(page.locator('#voice-caption')).toContainText('語音字幕');
   await expect(page.locator('#messages')).toContainText('請以畫面為準');
   await expect(page.locator('#voice-agent')).toContainText('旅遊規劃');
   const schedules = await page.evaluate(() => window.__schedules);
   expect(schedules.length).toBe(2);
   expect(schedules[1] - schedules[0]).toBeCloseTo(timing === 'pcm-contiguous' ? 0.1 : 0.2, 2);
-  if (timing === 'pcm-contiguous') await expect(page.locator('#voice-availability')).toContainText('PCM連續播放');
+  await expect(page.locator('#voice-availability')).toBeHidden();
   await expect(page.locator('#voice-status')).toContainText('聆聽中');
   await page.evaluate(() => window.__socket.receive({ type: 'taskError', turnId: 'unlocated_task', message: '未取得完整可定位的委派轉錄。' }));
   await expect(page.locator('#voice-status')).toContainText('未取得完整');

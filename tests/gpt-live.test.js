@@ -62,6 +62,32 @@ test('GPT-Live requests Taiwan Mandarin and vocabulary only through instructions
   assert.deepEqual(Object.keys(session).sort(), ['delegation', 'instructions', 'model']);
   assert.equal(session.audio, undefined, 'no invented locale or voice field; retain built-in default');
   assert.deepEqual(session.delegation, { type: 'client' });
+  assert.match(session.instructions, /只陳述需求而沒有問句/);
+  assert.match(session.instructions, /等待當句語意完整/);
+});
+test('GPT-Live reconnect receives compact canonical trip and pending question without history, offers or consent', () => {
+  const journey = createSession();
+  journey.discovery.destinationCity = '東京'; journey.discovery.durationDays = 5;
+  journey.discovery.airportQuestion = { key: 'destination', city: '東京', candidates: ['NRT', 'HND'] };
+  journey.discovery.destinationAirportChoice = { city: '東京', candidates: ['NRT', 'HND'], accepted: [] };
+  journey.history.push({ role: 'user', text: 'HISTORY_NOT_FOR_VOICE_START' });
+  journey.offers.set('hidden-offer', { text: 'OFFER_NOT_FOR_VOICE_START' });
+  journey.quote = { text: 'QUOTE_NOT_FOR_VOICE_START' };
+  journey.consent = { text: 'CONSENT_NOT_FOR_VOICE_START' };
+  const config = gptLiveConfig(env);
+  const start = gptLiveStart(config, journey);
+  const context = JSON.parse(start.session.instructions.split('旅程資料：')[1]);
+  assert.equal(context.destinationCity, '東京');
+  assert.equal(context.durationDays, 5);
+  assert.deepEqual(context.pendingQuestion, journey.discovery.airportQuestion);
+  assert.doesNotMatch(start.session.instructions, /HISTORY_NOT_FOR_VOICE_START|OFFER_NOT_FOR_VOICE_START|QUOTE_NOT_FOR_VOICE_START|CONSENT_NOT_FOR_VOICE_START/);
+  assert.match(start.session.instructions, /機場名稱、日期、人數、艙等/);
+  const client = new Socket(), upstream = new Socket();
+  const bridge = bridgeGptLive(client, upstream, journey, env, config);
+  try {
+    upstream.emit('open');
+    assert.deepEqual(upstream.sent[0], start);
+  } finally { bridge.stop(); }
 });
 test('GPT-Live streams PCM, mute and timed audio using its own protocol without Voice Live events', () => {
   const t = setup();
@@ -81,6 +107,17 @@ test('GPT-Live streams PCM, mute and timed audio using its own protocol without 
   } finally { t.bridge.stop(); }
   assert.equal(t.upstream.sent.at(-1).type, 'session.close');
   assert.equal(t.session.voice, null);
+});
+test('GPT-Live input-rate rejection records exact guard counts without changing limits', context => {
+  const logs = [];
+  context.mock.method(console, 'error', message => logs.push(JSON.parse(message)));
+  const t = setup();
+  for (let i = 0; i < 4; i++) t.client.emit('message', Buffer.alloc(48000), true);
+  assert.equal(t.client.sent.at(-1).code, 'GPT_LIVE_AUDIO_LIMIT');
+  assert.equal(logs[0].limitReason, 'input_rate');
+  assert.equal(logs[0].inputBytes, 192000);
+  assert.equal(logs[0].windowBytes, 192000);
+  assert.equal(logs[0].upstreamBufferedBytes, 0);
 });
 test('fragments never trigger backend alone; delegation uses server transcript and canonical shared state once', async () => {
   let calls = 0, received;
@@ -202,7 +239,10 @@ test('long backend output remains canonical on screen rather than truncated into
   try {
     t.input('規劃'); await t.delegate();
     assert.equal(t.client.sent.find(e => e.type === 'result').result.text, text);
-    assert.match(t.upstream.sent.at(-1).content, /閱讀對話畫面/);
+    assert.match(t.upstream.sent.at(-1).content, /本輪後端朗讀資料/);
+    const parts = t.upstream.sent.filter(e => e.type === 'session.thinking.append');
+    assert.equal(parts.map(e => e.content.replace(/^朗讀資料\d+：/, '')).join(''), text);
+    assert.ok(parts.every(e => Buffer.byteLength(e.content) <= 450));
   } finally { t.bridge.stop(); }
 });
 test('superseded work and stop abort read-only tasks without early unlock or stale output', async () => {

@@ -1,6 +1,7 @@
 class MicrophonePCM extends AudioWorkletProcessor {
   constructor(options) {
     super(); this.frameSamples = options?.processorOptions?.sdk ? 960 : 2048;
+    this.timestamped = options?.processorOptions?.timestamped === true;
     this.samples = new Int16Array(this.frameSamples); this.offset = 0;
     this.port.onmessage = event => {
       if (event.data?.type === 'reset') { this.offset = 0; return; }
@@ -16,7 +17,8 @@ class MicrophonePCM extends AudioWorkletProcessor {
       const value = Math.max(-1, Math.min(1, sample));
       this.samples[this.offset++] = value < 0 ? value * 32768 : value * 32767;
       if (this.offset === this.samples.length) {
-        this.port.postMessage(this.samples.buffer, [this.samples.buffer]);
+        const audio = this.samples.buffer;
+        this.port.postMessage(this.timestamped ? { audio, capturedAt: currentTime } : audio, [audio]);
         this.samples = new Int16Array(this.frameSamples); this.offset = 0;
       }
     }

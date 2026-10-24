@@ -1,6 +1,6 @@
 # 四種語音架構：客戶比較與驗收
 
-更新2026-10-21。**目前沒有本次四模式同條件live分數、延遲排行或費用結論。** 本指南定義比較方法，不把官方能力、原始碼存在、私人設定、離線mock成功與真人聲學成功混為一談。既有preview未重啟；模式2仍被舊`gpt-realtime`配置阻擋，模式4私人資源／認證／profile映射待核准。不能為補結果自行呼叫雲端。
+更新2026-10-24。**目前沒有本次四模式同條件live分數、延遲排行或費用結論。** 本指南定義比較方法，不把官方能力、原始碼存在、私人設定、離線mock成功與真人聲學成功混為一談。目前3100已啟用v1.0.6，模式2使用核准的`gpt-realtime-2.1`，模式4 REST／SDK配置可用；有限真實服務測試不等於共同講稿／真人聲學驗收。GPT截句及SDK漏第二句仍未解決，其他已知問題見版本交接。不能為補結果自行呼叫雲端。
 
 詳細設定／官方來源見[Foundry指南](FOUNDRY.md#四種語音架構)，狀態見[版本交接](CURRENT-VERSION.md)；所有模式照[同一講稿](DEMO-SCRIPT.md)執行，主場景一律唯讀。
 
@@ -9,8 +9,8 @@
 | 固定順序 | 1 `voice-live` | 2 `voice-realtime` | 3 `gpt-live` | 4 `speech-direct` |
 |---|---|---|---|---|
 | API | Voice Live | Voice Live，**gpt-realtime-2.1** | 獨立GPT-Live，**gpt-live-1** | A既有Speech REST短音訊STT／B SDK continuous STT；兩者共用REST TTS |
-| 輸入 | `azure-speech` zh-TW STT | 音訊原生；**無STT配置** | 原生語音前端；本app仍需timed user transcript定位delegation | 16kHz mono PCM WAV、固定zh-TW；整段辨識、無partial |
-| 送同一四代理 | 完整轉錄文字 | `travel_backend`受控function的**模型整理需求** | client delegation對齊的轉錄片段；非原始音訊 | 短音訊STT完成文字 |
+| 輸入 | `azure-speech` zh-TW STT | 音訊原生；**無STT配置** | 原生語音前端；本app仍需timed user transcript定位delegation | A為16kHz mono PCM WAV整段辨識、無partial；B為16kHz mic或8／16kHz PCM16 WAV串流，含interim／final；固定zh-TW |
+| 送同一四代理 | 完整轉錄文字 | `travel_backend`受控function的**模型整理需求** | client delegation對齊的轉錄片段；非原始音訊 | A完整STT文字；B依序處理每個recognized final，不保證語意完整 |
 | 觸發 | 完整transcription事件 | **`input_audio_buffer.committed` → 指定travel_backend function `response.create`** | delegation id／offset及可安全定位的timed transcript | A本機聲學VAD：校準300ms／最小有聲200ms／pre-roll500ms／靜音1000ms、最長28秒、30秒硬限；B SDK recognized final（700／1000ms切段），不是session_stopped |
 | 輸出 | `pre_generated` exact-text Personal Voice | `function_call_output`後Voice Live response audio | commentary供模型參考，再以built-in語音回答 | Speech REST SSML exact-text Personal Voice |
 | 實際聲音類別 | `azure-personal`／DragonLatestNeural | **Azure標準`zh-TW-HsiaoChenNeural`，非built-in** | 文件預設built-in `marin`，目前session契約不能換Personal Voice | `speakerProfileId` GUID＋base model，**不是Voice Live name** |
@@ -21,18 +21,20 @@
 
 ## 客戶關心的能力：官方、接線與測量分開
 
-| 面向 | 1 Voice Live STT／exact-text | 2 Voice Live Realtime 2.1 | 3 GPT-Live-1 | 4直接Speech REST |
+| 面向 | 1 Voice Live STT／exact-text | 2 Voice Live Realtime 2.1 | 3 GPT-Live-1 | 4直接Speech REST／SDK |
 |---|---|---|---|---|
-| 自然臺灣華語 | 固定zh-TW辨識，Personal Voice仍需臺灣聽者評估 | native理解＋本次Azure zh-TW標準voice，不能推論準確率／口音 | 臺灣華語／用詞instructions只是偏好，不保證accent／字幕字形 | 固定zh-TW辨識＋Personal Voice；未live測 |
+| 自然臺灣華語 | 固定zh-TW辨識，Personal Voice仍需臺灣聽者評估 | native理解＋本次Azure zh-TW標準voice，不能推論準確率／口音 | 臺灣華語／用詞instructions只是偏好，不保證accent／字幕字形 | 固定zh-TW辨識＋Personal Voice；已有有限live證據，非同條件真人聽評 |
 | 噪音／回音 | browser best-effort；Voice Live相關server設定不代表房間效果已驗收 | browser best-effort；不套用其他模式的AEC保證 | browser best-effort；不假設Voice Live server AEC契約 | browser best-effort；本管線**無server AEC** |
 | 語言／混說 | zh-TW非auto LID；中英slot需測 | native語音不等於已驗證auto LID／混說 | 原生互動仍受轉錄邊界與委派限制 | zh-TW固定，**無auto LID**；中英辨識需測 |
-| Phrase list | 官方`azure-speech`有`phrase_list`；未證實本app配置就標「未配置」 | 本路徑無STT，不適用該azure-speech phrase list | 不假設有相同phrase-list schema | **短音訊REST不支援phrase list** |
-| 插話／更正 | 既有只讀取消／過時播放隔離，真人效果仍需驗收 | committed／function受控序列；不宣稱無縫全雙工 | 原生全雙工前端；backend更正／delegation仍需安全序列 | **半雙工**，排程PCM播完才恢復收音；可停止session再重新開始，無semantic VAD |
+| Phrase list | 官方`azure-speech`有`phrase_list`；未證實本app配置就標「未配置」 | 本路徑無STT，不適用該azure-speech phrase list | 不假設有相同phrase-list schema | **A短音訊REST不支援**；B SDK可選最多100個phrase，效果須另測 |
+| 插話／更正 | 既有只讀取消／過時播放隔離，真人效果仍需驗收 | 待啟用來源：停舊播放但不abort／重跑後端，最多一個committed待辦，待工具／鎖釋放或舊音訊response終止後序列委派；非無縫全雙工保證 | 原生全雙工前端；backend更正／delegation仍需安全序列 | **半雙工**，排程PCM播完才恢復收音；可停止session再重新開始，無semantic VAD |
 | 原始轉錄可信度 | 可比STT文字與原話 | 只比模型整理需求／slots；**不可算原始STT WER** | 可用可見timed user transcript比對，但要記片段／邊界拒絕 | 可比STT完整文字與原話 |
 | 確切朗讀 | exact-text發音層，不改canonical事實 | 模型可改述；需查內容遺漏／新增 | 模型可改述；不能繼承exact-text保證 | exact-text SSML；服務發音效果仍待聽評 |
-| 設定阻擋 | 保留既有設定 | `configuredModel=gpt-realtime` ≠ `requiredModel=gpt-realtime-2.1`，**不可用、不fallback** | 獨立endpoint／enabled；觀察過事件不等於完整成功 | 獨立enabled預設false，profile／auth待核准 |
+| 設定阻擋 | 保留既有設定 | 只接受`configuredModel=requiredModel=gpt-realtime-2.1`；不符即拒絕、不fallback | 獨立endpoint／enabled；觀察過事件不等於完整成功 | 獨立enabled範本預設false；目前3100已核准profile／auth，其他環境另核驗 |
 
 所有模式都要求browser `noiseSuppression`／`echoCancellation`，不是一定生效的聲學處理，也不代表四者有相同服務端降噪。不要把產品標籤「native」「full-duplex」直接當成這個app在噪音、更正或工具中斷上的通過證據。
+
+Option2上述插話來源守門通過45/45項voice Node測試，保留audio／call ID去重、無效工具及交易拒絕；待辦超量明確回`VOICE_PENDING_LIMIT`，取消等待20秒逾時回`VOICE_REALTIME_TIMEOUT`，包含遲到response的取消序列。尚未重啟3100（仍v1.0.6／`b451311c607461c4`），不得列為live通過。SDK 11:33截圖至少有一個final，既有stdout無SDK error但缺phase traces；額外零PCM／final→agent→播放resume離線測試不代表正式SDK或VAD已修復，現象仍待定位。
 
 ## 共同場景與客觀答案
 
@@ -58,9 +60,9 @@
 3. **耳機固定背景噪音**、**喇叭固定背景噪音**：同噪音來源、音量、距離；有儀器才報dBA／SNR，否則註「未量測」，不能猜值。
 4. 每條件加入同一句臺灣口語、中英code-switch、數字／IATA／DEMO101、停頓、自我修正、等待中更正、播放中插話。
 5. 每模式每條件至少5次完整重複；正式p95建議增加至至少20個有效同條件樣本並公開n／估計方法。暖機與首次連線分開記、順序輪替、同資料／四代理版本；不用不受控回音或旁人個資作素材。
-6. Direct Speech按開始後先安靜300ms校準；說話停頓1秒自動送出，正常等排程PCM播完才恢復收音。另測短聲響、600ms自然停頓、穩定／突變噪音；聲學VAD非語意判斷，誤觸／漏觸都記錄。若用手動備援或停止重開，記額外操作；不把未收錄的插話算辨識錯誤，也不隱藏半雙工等待成本。
+6. Direct Speech A REST按開始後先安靜300ms校準；說話停頓1秒自動送出。B SDK使用700／1000ms切段，不套用REST校準／VAD參數。兩者正常等排程PCM播完才恢復收音。另測短聲響、600ms自然停頓、穩定／突變噪音；聲學切段非語意判斷，誤觸／漏觸都記錄。若用手動備援或停止重開，記額外操作；不把未收錄的插話算辨識錯誤，也不隱藏半雙工等待成本。
 
-模式1phrase-list能力若要單獨A/B，先另核准可用接線與相同詞表，標示「有／無配置」及其他條件不變；測試詞可固定為「桃園、成田、梅好 Airlines、DEMO101、DEMO0101、TPE、NRT」，這是評測詞表，**不是宣稱已注入服務或所有詞都適合官方phrase_list格式**。不得偷偷調一模式詞表然後稱公平預設比較。模式4不能用不支援的REST參數模擬此能力。
+模式1phrase-list能力若要單獨A/B，先另核准可用接線與相同詞表，標示「有／無配置」及其他條件不變；測試詞可固定為「桃園、成田、梅好 Airlines、DEMO101、DEMO0101、TPE、NRT」，這是評測詞表，**不是宣稱已注入服務或所有詞都適合官方phrase_list格式**。不得偷偷調一模式詞表然後稱公平預設比較。模式4 A不能用不支援的REST參數模擬此能力；B SDK可另做相同詞表的有／無配置比較，不能把結果歸給REST。
 
 ### 客觀評分
 
@@ -100,17 +102,17 @@
 | 模式／條件 | 嘗試／成功／錯誤 | slots／intent | MOS（各面向） | server stage p50／p95 | browser首包→排程延遲p50／p95 |
 |---|---|---|---|---|---|
 | 1 Voice Live | 未測 | 未測 | 未測 | 未測 | 未測 |
-| 2 Realtime 2.1 | 配置不符，未測 | 未測 | 未測 | 未測 | 未測 |
+| 2 Realtime 2.1 | 本次共同講稿未測 | 未測 | 未測 | 未測 | 未測 |
 | 3 GPT-Live | 本次共同講稿未測 | 未測 | 未測 | 未測 | 未測 |
-| 4 Speech REST | 待私人配置，未測 | 未測 | 未測 | 未測 | 未測 |
+| 4 Speech REST／SDK | 本次共同講稿未測，A／B分開記錄 | 未測 | 未測 | 未測 | 未測 |
 
 ## 使用情境怎麼選
 
 | 客戶優先需求 | 可優先驗證 | 必須接受／驗證的取捨 |
 |---|---|---|
 | 品牌／Personal Voice、確切金額與代碼朗讀 | 1 Voice Live exact-text | STT→後端→TTS分階段互動；真人回音與等待仍要測；Professional資產不存在不能先承諾 |
-| 要音訊原生理解但仍用Azure標準／custom voice與受控後端 | 2 Voice Live Realtime 2.1 | 先核准2.1配置；本次是Azure標準voice、模型整理非逐字稿、回答可改述、唯讀 |
+| 要音訊原生理解但仍用Azure標準／custom voice與受控後端 | 2 Voice Live Realtime 2.1 | 目標環境須核驗2.1配置；本次是Azure標準voice、模型整理非逐字稿、回答可改述、唯讀 |
 | 想探索獨立原生全雙工前端與內建聲音 | 3 GPT-Live-1 | 目前需timed transcript安全委派、不可換Personal Voice、口音不保證、output timing相容需揭露、唯讀 |
-| 聲學VAD自動分段、隔離STT／代理／Personal TTS責任，不需Voice Live | 4 Speech REST | 非semantic VAD；最長28秒片段／30秒硬限、半雙工、無partial／phrase list／auto LID／server AEC；底噪／音量可能誤觸漏觸，唯讀 |
+| 隔離STT／代理／Personal TTS責任，不需Voice Live | 4 Speech REST／SDK | A聲學VAD最長28秒片段／30秒硬限，無partial／phrase list；B連續辨識有interim／final及可選phrase，WAV最多120秒；兩者非semantic VAD、半雙工、無auto LID／server AEC、唯讀 |
 
 這是依能力邊界提出的驗證選項，不是品質／價格採購結論。最終選擇須納入客戶真實設備、臺灣聽者、噪音、錯誤恢復、意圖／slot準確性與量測延遲；購買流程一律停止語音轉文字作獨立示範。

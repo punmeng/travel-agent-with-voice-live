@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildDefinitions, deployAgents } from '../scripts/deploy-agents.js';
 import { entitlements } from '../lib/core.js';
+import { answerPolicy } from '../lib/foundry.js';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const endpoint = 'https://example-resource.services.ai.azure.com/api/projects/example-project';
 const manifest = JSON.parse(readFileSync(new URL('../data/generated/foundry-tools.json', import.meta.url)));
@@ -14,12 +17,18 @@ test('approved definitions bind GPT-5.4 and only backed role tools, no legacy sa
     assert.deepEqual(definition.tools.map(t => t.name), entitlements[role]);
     assert.ok(definition.instructions.includes('繁體中文'));
     assert.ok(definition.instructions.includes('合成 mock'));
+    assert.ok(definition.instructions.endsWith(answerPolicy));
     assert.equal(definition.temperature, undefined); assert.equal(definition.top_p, undefined);
     for (const t of definition.tools) {
       assert.equal(t.strict, true); assert.equal(t.parameters.additionalProperties, false);
     }
   }
   assert.throws(() => buildDefinitions(manifest, 'new-unapproved-deployment'));
+});
+test('retired short-reply management entry refuses even --apply without touching cloud or credentials', () => {
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/short-replies.js', import.meta.url)), '--apply'], { encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Retired: 50-word agent instructions/);
 });
 test('deployment verifies management definitions, reruns reuse matching versions and conflicts never overwrite', async () => {
   const stored = new Map(); let writes = 0;

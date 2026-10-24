@@ -1,8 +1,8 @@
 # 梅好 Airlines AI 旅遊規劃師：系統設計
 
-**文件快照：2026-10-19。** 本文件描述 `C:\Code\travelagent` 已實作的本機 POC，不是尚未部署的目標架構。主要讀者為應用、AI、資安及方案架構審閱者。
+**原始文件快照：2026-10-19；現行交付契約更新至2026-10-24。** 本文件描述 `C:\Code\travelagent` 已實作的本機 POC，不是尚未部署的目標架構。主要讀者為應用、AI、資安及方案架構審閱者；歷史測試紀錄保留當時版本與數字。
 
-本次收尾狀態與重現方式見[本機版本交接](CURRENT-VERSION.md)：既有3100已運行build `6b6814aca5deb4b2`，收尾不重啟。Hosted Agent官方Python SDK隔離原型不在下述正式應用路徑中；Azure架構／費用只作唯讀評估，登入、持久化月額度、映像及公開部署皆未實作／未核准。Azure工作維持暫停；Git原始碼快照另經使用者核准。
+目前3100為v1.0.6／啟動build `b451311c607461c4`，本輪文件清理不重啟；啟用與歷史證據見[本機版本交接](CURRENT-VERSION.md)。下方Voice Live架構圖及第11節聚焦模式1；另外三條現行語音路徑及REST／SDK界線見[Foundry指南](FOUNDRY.md#四種語音架構)。Hosted Agent官方Python SDK隔離原型不在下述正式應用路徑中；Azure架構／費用只作唯讀評估，登入、持久化月額度、映像及公開部署皆未實作／未核准。Azure工作維持暫停；Git原始碼快照另經使用者核准。
 
 > **核心界線：AI 與語音是真實 Azure 服務；航空庫存、航班時刻、機位、票價及結帳均為合成／模擬。系統不接受卡號、不收款、不訂位、不開票，也不是航空公司官方服務。**
 
@@ -19,7 +19,7 @@
 | 有界四代理 | 後端路由＋嚴格function tools | 不是任意自主工具代理 |
 | 知識與交易分離 | Foundry file_search參考；本機handler決定價格 | RAG即使找到票價，也不是可售價或授權 |
 | 語音共用狀態 | Voice Live WebSocket turn bridge | 非WebRTC；TCP與完整GPT回合延遲較高 |
-| 簡潔對話 | 每則最多50詞，必要時「繼續」 | 不一次貼滿所有選項，需逐段閱讀 |
+| 對話與朗讀 | 畫面完整；平常語音摘要、要求詳細就完整 | 語音內部分段自動接續，停止清空 |
 | 支付界線 | 限時、同session的MOCK checkout | 未串接航空公司或付款業者 |
 
 ## 2. 使用者旅程與範圍
@@ -30,7 +30,7 @@
 
 1. 「我想去日本玩幾天」：探索國家、主題或天數，不觸發機票搜尋。
 2. 「想賞楓，五天，帶媽媽，不要走太多路」：保留天數、同行者與少步行，不猜兩名成人或媽媽年齡。
-3. 「東京好了，幫我安排五天」：可以先產生五天靈感；長內容逐段呈現。
+3. 「東京好了，幫我安排五天」：可以先產生五天靈感；畫面完整呈現，語音獨立摘要／詳細並有界自動接續。
 4. 到查票時才確認出發城市、自然名稱的機場偏好、明確去回日期、成人數與艙等。
 5. 閱讀候選後「選第二班」；再請助理確認現在價格。
 6. 看完最新報價、幣別、期限與模擬條件後，說「確認目前報價」。
@@ -42,7 +42,7 @@
 
 | 項目 | 目前實值／狀態 |
 |---|---|
-| 應用 | `meihao-airlines-travel-planner` 0.1.0；Node.js >=22；目前環境Node22.16.0 |
+| 應用 | `meihao-airlines-travel-planner` v1.0.6；Node.js >=22 |
 | 網址 | `http://127.0.0.1:3100`，只綁loopback |
 | 本機模式 | `.env`為`APP_MODE=foundry`；通用`.env.example`仍預設mock |
 | Foundry專案 | 私人後端設定；此公開快照不含實際專案識別 |
@@ -69,15 +69,15 @@ flowchart LR
     Voice["lib/voice.js<br/>受控 PCM WebSocket bridge"]
     Orchestrator["lib/agents.js / conversation.js<br/>自然理解與後端路由"]
     State["記憶體 session<br/>draft/trip/offers/quote/consent"]
-    Replies["lib/replies.js<br/>50詞、分段、呈現閘門"]
+    Replies["lib/replies.js<br/>完整答案、呈現閘門"]
     Tools["lib/core.js callTool<br/>嚴格schema／權限"]
     Data["確定性 MOCK dataset"]
     Checkout["lib/checkout.js<br/>同session限時模擬頁"]
     MCP["mcp.js<br/>獨立 stdio MCP session"]
   end
   subgraph Azure["既有 Azure Foundry"]
-    Intent["意圖 agent v6"]
-    Planner["行程 agent v6"]
+    Intent["意圖 agent v7"]
+    Planner["行程 agent v7"]
     Flight["航班 agent v7"]
     Price["票價 agent v5"]
     Search["file_search<br/>四個 managed vector stores"]
@@ -108,7 +108,7 @@ flowchart LR
 | `lib\conversation.js` | 嚴格理解輸出、當則原文證據、自然名稱／日期／數量解析 |
 | `lib\agents.js` | 路由、業務回合、候選／報價文字、選擇與明確同意 |
 | `lib\foundry.js` | 後端credential、Responses、function loop、file_search狀態與用量 |
-| `lib\replies.js` | 詞數、完整分頁、已呈現候選／報價及公開state遮罩 |
+| `lib\replies.js` | 完整回覆、已呈現候選／報價及公開state遮罩；保留計詞相容工具但不分頁 |
 | `lib\core.js` | strict schemas、權限、搜尋、ownership、expiry、consent與冪等模擬確認 |
 | `lib\dataset.js` | 共同確定性生成器、時區／日期換算 |
 | `lib\checkout.js` | 模擬provider接點、opaque token、落地頁檢核 |
@@ -158,13 +158,13 @@ Responses使用：
 | offers／selected | session專屬候選Map、目前選擇UUID |
 | quote／consent | 最新確認價及綁定其ID、版本、金額、幣別、期限的明確同意 |
 | bookings／receipts／checkouts | 純模擬結果、冪等鍵、限時連結 |
-| replyPages／presentedOffers／presentedQuote | 未讀內容、已完整呈現候選、已完整呈現報價fingerprint |
+| replyPages／presentedOffers／presentedQuote | replyPages保留相容空陣列、不再累積未讀頁；已完整呈現候選及報價fingerprint |
 | history／chatRequests／cloudEvidence | 有界對話、請求冪等紀錄及雲端呼叫摘要 |
 | busy／voice | 同session互斥、語音連線生命週期 |
 
 ### 6.2 理解與正規化
 
-intent輸出`{role, reply, slots}`，slots只有指定欄位且每欄為string或null。**每個非null值必須是當則使用者訊息的連續原文片段**；不能從history補寫為「旅客剛確認」，也不能讓模型自行寫入解析後日期或價格。後端再做型別與領域解析。
+intent輸出`{role, reply, slots, presentation}`；presentation包含`detail`、nullable指定`day`及`flights`。slots只有指定欄位且每欄為string或null。**每個非null值必須是當則使用者訊息的連續原文片段**；不能從history補寫為「旅客剛確認」，也不能讓模型自行寫入解析後日期或價格。後端再做型別與領域解析。
 
 東京可能為成田／羽田，台北可能為桃園／松山。discovery保存每側`AirportChoice {city,candidates,accepted}`及最近真正詢問的`airportQuestion {key,city,candidates}`，不把未選機場當成未知城市。回答「都可以／沒差／任何一個／你幫我選」綁定最近問題、接受完整集合；模型誤放另一Place slot亦由問題state校正，原文證據仍須當則可驗。明確多機場句與「不要松山／不是成田，是羽田」會更新／排除集合；變更集合失效舊報價，重述相同集合不清已選offer。日期、人數、同行者、預算與步調保持。下一個缺項若是另一個已知城市的機場，只問機場、不重問城市。查票意圖保存在`searchRequested`，回答完即續查或問下一項，不重貼保留偏好樣板。
 
@@ -180,21 +180,23 @@ Excel範本`data\templates\city-airport-mapping.xlsx`及`import-city-airports.js
 
 這仍是GPT理解加上有界後端canonical parser，不宣稱任何語言、任意日期說法或任意城市都可無限理解。離線mock只有明確的有限regex語句支援；unsupported地點進入澄清，不是讓使用者重試相同UNKNOWN_CITY錯誤。
 
-## 7. 每回合50詞與漸進呈現
+## 7. 完整畫面與獨立語音交付
 
-「50word」實作為**最多50個有意義詞，而非至少／恰好50詞或50字**。`Intl.Segmenter('zh-Hant', {granularity:'word'})`的`isWordLike`計詞，英文／混合語句亦同。標點不計。完整日期、幣別金額、UUID、MOCK班號與ASCII URL是不可拆的原子單位；checkout按畫面「開啟模擬結帳（不收款）」標籤計詞，避免標籤變長後超標。
+v1.0.3移除50詞畫面分頁。`result.text`完整呈現本輪答案，`history.text/fullText`保留相同內容；新問題清除舊queue。`result.speech`另提供普通摘要或明確詳細文字，不回寫canonical、trip或quote。要求全部展開時逐日詳列已確認會議／活動及標示為建議的安排；指定第2天時不改整趟天數或其他日程。
 
-agent指令先要求以35詞為目標、最多50詞。後端對所有來源的最終文字統一處理，包含intent、planner、clarification、航班／選擇、reprice、checkout及引用。若太長，**不丟棄後半、不中切URL／金額／識別碼**：以詞邊界及優先句末／換行分頁，保留續讀提示的詞數空間；旅客說「繼續」讀下一段。五天行程的state與後續內容仍是五天，不縮為三天。角色標籤、錯誤面板、文件和checkout獨立頁不屬於助理對話詞數。
+Foundry intent與planner的核准新版本7移除舊精簡規則；intent的嚴格presentation判斷detail、day、flights。API拒絕agent reference與單次instructions覆蓋同時使用，因此Git忽略的本機`.foundry\presentation.json`精確匹配project fingerprint、agent名與原版號6後才使用7；檔案不存在就保留配置版本、不做重映射，不修改`.env`或雲端。一般詳細請求維持intent＋planner，不新增摘要模型。完整answer仍受原token／request預算限制，未完成輸出明確失敗。
+
+詳細planner的一次輸出為`days[{day,advice}]`，後端核對精確日期集合與順序、每段最多500字，將建議併在對應日期的權威會議／活動後，不再附第二份完整行程；無效結果明確回`FOUNDRY_PLAN`。這項補充禁止工具呼叫並標示場所資訊待核驗。普通規劃、住宿、會議編輯或估算預算的畫面仍完整，語音摘要；只有本輪明確要求詳細才完整朗讀，不沿用上輪深度。
 
 安全呈現與交易相連：
 
-- 一個候選的所有分頁讀完，才將其加入`presentedOffers`；尚未讀完第二班，不能直接選第二班。
+- 航班完整文字納入回覆才加入`presentedOffers`，選擇仍須目前有序offerIds。
 - 先呈現選定去回行程／成人數／艙等，再呈現完整最新總額／幣別／版本／期限／純模擬條件。
-- 只有最後報價頁完成才設定`presentedQuote`；之前公開state的quote為null，不讓UI誤將未讀內容當已見報價。
-- 提前確認會拒絕且保留待讀報價頁；修改旅程、搜尋、選擇或reprice會清除相應舊呈現狀態。
-- 語音從同一canonical `result.text`經`lib\speech.js`正規化一次再作預產生朗讀，不另寫模型答案。識別碼字母分開拼、數字逐個讀繁中零一二（保留前置零／I與1差別）；日期／時間／金額讀完整繁中語意，IANA路徑用維護的當地時間標籤。checkout只說連結已放在對話，不唸token；畫面原路徑／權威值完整。50詞限制canonical顯示，發音展開不截掉必要事實；actual Voice Live合成已回音訊，聲學效果仍需使用者試聽。
+- 完整quote納入畫面回覆才設定`presentedQuote`；語音另收到displayed後才取得下一輪quote context。
+- 同意仍須使用者明確接受目前quoteId／version／total／currency／expiresAt，語音摘要、播放確認都不是同意。修改旅程、搜尋、選擇或reprice清除舊呈現狀態。
+- Option1及直接Speech在speech正規化後按句／詞界切成最多48段、每段120字元，瀏覽器播放完一段回傳`segmentPlayed`才合成下一段，45秒逾時明確停止。原60秒buffer、30秒排程窗口及音訊總量守門保留，停止／插話清除待播。Realtime按detail生成，GPT以有界thinking資料加一次commentary生成連續語音。有效期限讀台北時間到分鐘，畫面仍保留ISO。
 
-分頁不執行模型／工具，但「繼續」也是一個成功完成的使用者回合。文字／語音／續讀共用100回合；相同requestId重試、錯誤及15秒等待狀態不算完成回合。沒有應用五分鐘截斷。
+內部分段不另消耗使用者回合，不需「繼續」。文字／語音共用100完成回合；相同requestId重試、錯誤及15秒等待狀態不算完成回合。
 
 ## 8. 靜態知識與合成資料
 
@@ -284,7 +286,7 @@ stateDiagram-v2
   Search --> Compare: 有界合成搜尋
   Compare --> Select: 完整候選已呈現且旅客選擇
   Select --> Reprice: 重新報價
-  Reprice --> Reprice: 繼續閱讀全部條件
+  Reprice --> Reprice: 確認價過期或要求重新報價
   Reprice --> Book: 最新完整報價＋明確同意
   Book --> MockCheckout: 同session限時超連結
   MockCheckout --> [*]: 只顯示，不收款
@@ -305,9 +307,8 @@ sequenceDiagram
   U->>A: 請確認現在價格
   A->>T: reprice_offer
   T-->>A: 新quote、版本、總額、TWD、expiry
-  A-->>U: 行程與條件分頁（每則<=50詞）
-  U->>A: 繼續
-  A-->>U: 最後報價頁；才公開完整quoteContext
+  A-->>U: 完整行程與條件，語音獨立摘要／詳細
+  A-->>U: 完整quoteContext；語音須先確認畫面displayed
   U->>A: 確認目前報價＋當時context＋requestId
   A->>T: presentedQuote／quote版本／total／currency／expiry檢核
   T->>T: consent＋冪等SIMULATED_ONLY
@@ -350,7 +351,7 @@ sequenceDiagram
   V-->>S: transcription.completed
   S-->>B: transcript、thinking
   S->>F: 同session chat
-  F-->>S: <=50詞結果與呈現遮罩state
+  F-->>S: 完整結果、獨立speech與呈現遮罩state
   S-->>B: result
   B->>S: displayed(turnId)
   S->>V: response.create / pre_generated_assistant_message
@@ -381,8 +382,8 @@ sequenceDiagram
 | 層 | 限制 |
 |---|---|
 | session | 最多100個；閒置1小時失效，busy session不清；同session一個寫入 |
-| chat | 共100成功完成的使用者回合（含文字／語音／繼續），錯誤不計完成；訊息2,000字元、JSON12KB；history40筆、送雲端最近12筆 |
-| 分頁 | 計入100完成回合；不增加模型／工具呼叫 |
+| chat | 共100成功完成的使用者回合（含文字／語音及相容的「繼續」提示），錯誤不計完成；訊息2,000字元、JSON12KB；history40筆，按角色送精簡資料，intent另含最近四則需求各最多300字元 |
+| 交付 | 不再分頁；內部朗讀段自動接續、不另計回合；「繼續」僅提示上一則已完整顯示，該訊息仍計一回合但不呼叫模型／工具 |
 | tools | 每session60工具單位；單程搜尋按日期數計，來回乘2 |
 | 搜尋 | 最多2×2機場配對，每組最多3對日期；平行2、6候選 |
 | Foundry | 600 requests（100×2 agents×3輪）；回報2,400,000 tokens後拒絕下一次 |
@@ -428,7 +429,7 @@ token／time／bytes限制是應用保護，不是Azure帳單硬上限。最後�
 | 語音 | VOICE_SERVICE、VOICE_CONNECTION、VOICE_TRANSCRIPTION等可見錯誤，停止上游與收音 |
 | 人工復原 | mic拒絕先改網站權限；雲端失敗檢查身分／code／correlation ID，停止後可文字續聊 |
 
-HTTP retry使用同requestId及原quote context，不因重試偷換新報價；語音不自動重連／重播交易。UI錯誤面板不受50詞規則限制，保留診斷訊息；不用廣泛catch把真正故障變成假成功。
+HTTP retry使用同requestId及原quote context，不因重試偷換新報價；語音不自動重連／重播交易。UI錯誤面板保留診斷訊息；不用廣泛catch把真正故障變成假成功。
 
 `cloudEvidence`保留最多40筆role、agent/version、response ID、function／file_search數及usage摘要。當前沒有Application Insights、OpenTelemetry、集中式日誌或持久稽核DB。不能宣稱已具production tracing／SLA／端到端延遲監控。
 
@@ -467,7 +468,7 @@ VOICE_LIVE_ENDPOINT=https://<resource>.services.ai.azure.com/
 
 `generate`／`prepare:knowledge`只做本機資料；`ingest:knowledge`、agent版本更新與live smoke屬雲端變更／費用，不能因有腳本就視為重新授權。初始`deploy:agents`不適合拿來覆蓋已附知識版本，未知definition會拒絕；新版本更新須GET核對、保留functions／stores並核驗後保存exact refs。這次環境azd extension因缺相依失敗，使用受支援的REST＋既有CLI身分，未升級全域工具或新增基礎設施。
 
-## 16. 驗證證據與未驗證事項
+## 16. 歷史驗證證據與未驗證事項（2026-10-19快照）
 
 | 證據 | 已確認 | 不能推論 |
 |---|---|---|
@@ -510,7 +511,7 @@ VOICE_LIVE_ENDPOINT=https://<resource>.services.ai.azure.com/
 | 自然中文、國家靈感、逐步問問題 | conversation＋intent／planner | natural-checkout、replies測試；live與short smoke |
 | 五天／媽媽／少步行不遺失 | discovery／draft／planner context | state斷言、實際小量GPT對話 |
 | chat／voice only、簡潔UI | public HTML/CSS/app/voice | desktop/mobile browser測試與preview |
-| 每回合<=50詞、中英混合 | replies／精簡agent版本 | countWords／URL保留／超長model fake transport／live詞數 |
+| 完整回覆、獨立語音詳略 | replies／presentation agent版本 | 五天展開／指定日／完整航班與quote／有界自動播放／停止清空 |
 | 真正Voice Live，共用四角色 | voice bridge→chat(session) | cloud synthetic audio report＋離線共享state與工具驗收 |
 | 全部mock知識有對應 | prepare/ingest knowledge | 全記錄比對hash、四庫completed／membership GET |
 | 靜態參考不授權交易 | foundry／core entitlements | file_search輸出測試、strict schema／越權測試 |
