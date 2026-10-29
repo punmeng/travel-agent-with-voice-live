@@ -1,0 +1,90 @@
+{
+  "metadata": {
+    "mock": true,
+    "source": "Synthetic demonstration ranking guidance; preferences are soft and current-trip choices take precedence."
+  },
+  "personas": {
+    "business": {
+      "labels": { "zh-TW": "商務旅客", "en-US": "Business traveler" },
+      "preferredCabin": null,
+      "preferenceSummary": {
+        "zh-TW": ["優先白天出發", "提供會議時間後才比較時程適配"],
+        "en-US": ["Prefer daytime departures", "Compare meeting fit only after meeting times are provided"]
+      },
+      "softPreferences": {
+        "zh-TW": [
+          "可比較時，優先讓合成航班時刻符合已保存的會議時段。",
+          "比較航班時優先白天出發，再比較日期與合成總價；目錄沒有直飛與改票供應資料。",
+          "適時詢問會議地點與時間；飯店鄰近度僅供建議。"
+        ],
+        "en-US": [
+          "Fit synthetic flight times to explicitly saved meeting times when comparable.",
+          "Prefer daytime departures, then date flexibility and synthetic total fare; direct-flight availability and changeability are not represented in this catalog.",
+          "Ask for meeting location and time when relevant; hotel proximity is advice only."
+        ]
+      },
+      "unsupportedRequests": ["direct-flight inventory", "changeability", "hotel inventory"]
+    },
+    "family": {
+      "labels": { "zh-TW": "家庭旅客", "en-US": "Family traveler" },
+      "preferredCabin": null,
+      "preferenceSummary": {
+        "zh-TW": ["優先白天出發", "日期彈性與合成總價作為次要排序"],
+        "en-US": ["Prefer daytime departures", "Then compare date flexibility and synthetic total fare"]
+      },
+      "softPreferences": {
+        "zh-TW": [
+          "比較合成航班時偏好白天出發。",
+          "相關時詢問兒童年齡、旅行步調及房間需求。",
+          "目錄沒有相鄰座位、兒童服務或家庭房供應資料。"
+        ],
+        "en-US": [
+          "Prefer daytime departure times when comparing synthetic flights.",
+          "Ask for children's ages, travel pace, and room needs when relevant.",
+          "Seats together, child services, and family-room availability are not represented."
+        ]
+      },
+      "unsupportedRequests": ["seats together", "child services", "family-room inventory"]
+    },
+    "value": {
+      "labels": { "zh-TW": "精打細算", "en-US": "Value seeker" },
+      "preferredCabin": null,
+      "preferenceSummary": {
+        "zh-TW": ["優先較低合成總價", "再比較日期彈性"],
+        "en-US": ["Prefer lower synthetic total fare", "Then compare date flexibility"]
+      },
+      "softPreferences": {
+        "zh-TW": [
+          "符合條件的合成報價先按總價排序，再比較日期彈性。",
+          "飯店性價比僅供建議；目錄沒有飯店價格或供應資料。"
+        ],
+        "en-US": [
+          "Rank matching synthetic offers by total price, then date flexibility.",
+          "Hotel value is advice only; no hotel prices or availability are cataloged."
+        ]
+      },
+      "unsupportedRequests": ["hotel prices", "hotel inventory"]
+    },
+    "premium": {
+      "labels": { "zh-TW": "高端旅客", "en-US": "Premium traveler" },
+      "preferredCabin": "business",
+      "preferenceSummary": {
+        "zh-TW": ["偏好當地白天抵達與出發", "再比較飛行時間與合成總價", "未選艙等時才採用商務艙軟預設"],
+        "en-US": ["Prefer local daytime arrivals and departures", "Then compare duration and synthetic total fare", "Business cabin is a soft default only before a cabin is chosen"]
+      },
+      "softPreferences": {
+        "zh-TW": [
+          "只有旅客尚未選擇艙等時，才將商務艙當作軟預設。",
+          "偏好方便的抵達時間與舒適步調。",
+          "目錄沒有飯店品質或會員等級禮遇資料。"
+        ],
+        "en-US": [
+          "Use business cabin as a soft default only when the traveler has not chosen a cabin.",
+          "Prefer convenient arrival times and a comfortable pace.",
+          "Hotel quality and member status benefits are not represented."
+        ]
+      },
+      "unsupportedRequests": ["hotel quality", "status benefits", "upgrade eligibility"]
+    }
+  }
+}

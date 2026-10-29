@@ -1,3 +1,5 @@
+import { t } from './i18n.js';
+
 export const WAITING_MESSAGE = '我還在查詢，請稍等一下。';
 export function createWaitingNotice(show, {
   setTimeout: schedule = (fn, ms) => globalThis.setTimeout(fn, ms),
@@ -13,7 +15,7 @@ export function createWaitingNotice(show, {
     clear();
     const current = generation;
     timer = schedule(() => {
-      if (generation === current) show(true, WAITING_MESSAGE);
+      if (generation === current) show(true, t(WAITING_MESSAGE));
     }, 15000);
   }
   return { start, clear };

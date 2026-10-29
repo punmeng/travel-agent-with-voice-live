@@ -1,12 +1,14 @@
 import { createVoiceController } from './voice.js';
 import { createWaitingNotice } from './waiting.js';
 import { createAgentStatus } from './agent-status.js';
+import { t, getLocale, setLocale, applyTranslations } from './i18n.js';
 const $ = id => document.getElementById(id);
 const agentStatus = createAgentStatus($('voice-agent'));
+$('session-context').open = window.matchMedia('(min-width: 901px) and (min-height: 651px)').matches;
 const roles = { intent: '意圖協調師', planner: '旅遊規劃師', flight: '航班查詢師', price: '票價與購買師' };
 let state = null, loading = false, retryAction = null, voiceActive = false;
 const voiceTranscripts = new Map();
-const waiting = createWaitingNotice((visible, text) => { $('busy').textContent = visible ? text : '旅程團隊正在整理您的提案…'; });
+const waiting = createWaitingNotice((visible, text) => { $('busy').textContent = visible ? text : t('旅程團隊正在整理您的提案…'); });
 window.addEventListener('pagehide', () => waiting.clear());
 function el(tag, text, className) {
   const node = document.createElement(tag);
@@ -15,12 +17,18 @@ function el(tag, text, className) {
   return node;
 }
 async function api(path, body, signal) {
-  const response = await fetch(`/api/${path}`, body === undefined ? { signal } : {
+  let response;
+  try { response = await fetch(`/api/${path}`, body === undefined ? { signal } : {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal
-  });
-  const data = await response.json();
+  }); } catch (error) {
+    if (error.name === 'AbortError') throw error;
+    throw new Error(t('無法連線，請檢查網路後重試。'));
+  }
+  let data;
+  try { data = await response.json(); }
+  catch { throw new Error(t('服務回應格式無效，請稍後重試。')); }
   if (!response.ok) {
-    const error = new Error(data.message);
+    const error = new Error(data.message || t('無法完成請求，請稍後重試。'));
     error.code = data.error; error.diagnostic = `${data.error} · ${data.correlationId}`;
     throw error;
   }
@@ -54,7 +62,7 @@ function watchProgress(requestId) {
 function busy(value) {
   loading = value;
   $('busy').hidden = !value;
-  for (const id of ['send', 'new-trip', 'voice', 'retry']) $(id).disabled = value || voiceActive;
+  for (const id of ['send', 'new-trip', 'voice', 'retry', 'language']) $(id).disabled = value || voiceActive;
   $('voice-start').disabled = value || voiceActive || $('voice-start').dataset.available === 'false';
   $('message').disabled = voiceActive;
   $('messages').setAttribute('aria-busy', String(value));
@@ -68,25 +76,75 @@ async function run(action) {
   finally { waiting.clear(); busy(false); }
 }
 function message(text, role = 'assistant', agent) {
-  if (role === 'user') text = text.replace(/^語音前端委派（非原始逐字稿）：/, '需求摘要：');
   const article = el('article', undefined, `message ${role}`);
   const content = el('div');
   const paragraph = el('p');
+  const ranking = role === 'assistant' ? state?.memberRanking : null;
+  const applied = ranking?.message && text.includes(ranking.message) &&
+    !document.querySelector('.applied-preferences') && ranking.offerIds?.length >= 2 &&
+    ranking.offerIds.every(id => state.offers.some(offer => offer.id === id)) ? ranking : null;
+  if (applied) text = text.replace(applied.message, '').replace(/\n{3,}/g, '\n\n');
+  const legacySummaryPrefix = '語音前端委派（非原始逐字稿）：';
+  if (role === 'user' && text.startsWith(legacySummaryPrefix)) {
+    const label = el('span', t('需求摘要：'));
+    label.dataset.i18n = '需求摘要：';
+    paragraph.append(label);
+    text = text.slice(legacySummaryPrefix.length);
+  }
   const pattern = /\/checkout\/[a-f0-9]{64}\b/g;
   let last = 0;
   for (const match of text.matchAll(pattern)) {
     paragraph.append(document.createTextNode(text.slice(last, match.index)));
-    const link = el('a', '開啟模擬結帳（不收款）');
+    const link = el('a', t('開啟模擬結帳（不收款）'));
+    link.dataset.i18n = '開啟模擬結帳（不收款）';
     link.href = match[0]; paragraph.append(link); last = match.index + match[0].length;
   }
   paragraph.append(document.createTextNode(text.slice(last)));
-  content.append(el('p', role === 'user' ? '您' : roles[agent] ?? '旅程助理', 'speaker'), paragraph);
+  const speakerKey = role === 'user' ? '您' : roles[agent] ?? '旅程助理';
+  const speaker = el('p', t(speakerKey), 'speaker'); speaker.dataset.i18n = speakerKey;
+  content.append(speaker);
+  if (applied) {
+    const note = el('aside', undefined, 'applied-preferences');
+    note.dataset.rankingText = applied.message;
+    note.dataset.offerIds = JSON.stringify(applied.offerIds);
+    const label = el('strong', t('已套用至這些航班結果的偏好'));
+    label.dataset.i18n = '已套用至這些航班結果的偏好';
+    note.append(label, el('p', applied.message));
+    content.append(note);
+  }
+  content.append(paragraph);
   article.append(content); $('messages').append(article);
   return content;
 }
 function scroll() { $('messages').scrollTop = $('messages').scrollHeight; }
+function renderSessionContext() {
+  const trip = state?.trip ?? state?.draft ?? {};
+  const discovery = state?.discovery ?? {};
+  const fields = [
+    ['目前階段', state?.stage],
+    ['出發地', trip.origin ?? discovery.originCity],
+    ['目的地', trip.destination ?? discovery.destinationCity],
+    ['出發日期', trip.date],
+    ['回程日期', trip.returnDate],
+    ['旅客人數', trip.travelers],
+    ['艙等', trip.cabin ? t({ economy: '經濟艙', premium: '豪華經濟艙', business: '商務艙' }[trip.cabin] ?? trip.cabin) : undefined],
+    ['少步行', typeof trip.lowWalking === 'boolean' ? t(trip.lowWalking ? '偏好少步行' : '未指定少步行') : undefined]
+  ];
+  $('session-facts').replaceChildren(...fields.flatMap(([label, value]) => [
+    el('dt', t(label)), el('dd', typeof value === 'string' || typeof value === 'number' ? String(value) : t('尚未提供'))
+  ]));
+}
 function setState(next) {
+  document.querySelectorAll('.applied-preferences').forEach(note => {
+    if (JSON.stringify(next?.memberRanking?.offerIds) !== note.dataset.offerIds) {
+      note.replaceWith(el('p', note.dataset.rankingText));
+    } else {
+      note.dataset.rankingText = next.memberRanking.message;
+      note.querySelector('p').textContent = next.memberRanking.message;
+    }
+  });
   state = next;
+  renderSessionContext();
   document.querySelectorAll('[data-agent]').forEach(n => n.classList.toggle('active', n.dataset.agent === state.activeAgent));
   document.querySelectorAll('[data-stage]').forEach(n => n.classList.toggle('active', n.dataset.stage.split(' ').includes(state.stage)));
 }
@@ -95,7 +153,7 @@ async function sendChat(text) {
   const q = state?.quote;
   // Capture the displayed context now, not at retry time or from a newer server quote.
   const request = {
-    message: text, ...(state?.textDelivery ? { delivery: 'text' } : {}),
+    message: text, locale: getLocale(), ...(state?.textDelivery ? { delivery: 'text' } : {}),
     requestId: crypto.randomUUID(), contextVersion: state?.contextVersion,
     offerIds: state?.offers.map(o => o.id) ?? [],
     quoteContext: q ? { quoteId: q.id, version: q.version, total: q.total, currency: q.currency, expiresAt: q.expiresAt } : null
@@ -110,6 +168,7 @@ async function sendChat(text) {
   });
 }
 function showResult(result) {
+  document.querySelectorAll('.applied-preferences').forEach(note => note.replaceWith(el('p', note.dataset.rankingText)));
   setState(result.state);
   const target = message(result.text, 'assistant', result.state.activeAgent);
   scroll();
@@ -119,7 +178,11 @@ const voiceController = createVoiceController({
   api, onTranscript: (text, turnId) => { voiceTranscripts.set(turnId, message(text, 'user')); scroll(); }, onResult: showResult,
   onSuperseded: turnId => {
     const content = voiceTranscripts.get(turnId);
-    if (content) content.querySelector('.speaker').textContent = '您 · 已由後續更正取代';
+    if (content) {
+      const speaker = content.querySelector('.speaker');
+      speaker.dataset.i18n = '您 · 已由後續更正取代';
+      speaker.textContent = t(speaker.dataset.i18n);
+    }
   },
   canStart: () => !loading && !voiceActive,
   onRecovered: data => {
@@ -129,6 +192,7 @@ const voiceController = createVoiceController({
     scroll();
   },
   getDisplayedContext: () => ({
+    locale: getLocale(),
     offerIds: state?.offers.map(o => o.id) ?? [],
     quoteContext: state?.quote ? { quoteId: state.quote.id, version: state.quote.version, total: state.quote.total, currency: state.quote.currency, expiresAt: state.quote.expiresAt } : null
   }),
@@ -137,18 +201,50 @@ const voiceController = createVoiceController({
 $('chat-form').addEventListener('submit', e => { e.preventDefault(); if (!loading && $('message').value.trim()) sendChat($('message').value.trim()); });
 $('message').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('chat-form').requestSubmit(); } });
 $('retry').addEventListener('click', () => { if (retryAction) run(retryAction); });
-$('new-trip').addEventListener('click', () => run(async () => { await api('reset', {}); window.location.reload(); }));
+$('new-trip').addEventListener('click', () => {
+  const locale = getLocale();
+  let resetCompleted = false;
+  void run(async () => {
+    if (!resetCompleted) { await api('reset', {}); resetCompleted = true; }
+    if (locale !== 'zh-TW') await api('language', { locale });
+    window.location.reload();
+  });
+});
 $('voice').addEventListener('click', () => {
-  $('voice-message').textContent = '航班與票價皆為合成示範，請以畫面內容為準。選班、報價及購買請使用文字對話。';
+  $('voice-message').textContent = t('航班與票價皆為合成示範，請以畫面內容為準。選班、報價及購買請使用文字對話。');
   $('voice-dialog').hidden = false;
+});
+let bootstrapData;
+function configure(data) {
+  bootstrapData = data;
+  setLocale(data.locale ?? data.state?.locale);
+  $('language').value = getLocale();
+  applyTranslations();
+  agentStatus.refresh();
+  if (data.version) { $('app-version').textContent = `v${data.version}`; $('app-version').hidden = false; }
+  $('mode').textContent = t(data.mode === 'mock' ? '旅遊規劃示範' : 'AI 旅遊規劃');
+  $('voice').querySelector('span:last-child').textContent = t(data.voice.available ? '選擇語音模式' : '語音尚未啟用');
+  $('voice-message').textContent = t('航班與票價皆為合成示範，請以畫面內容為準。選班、報價及購買請使用文字對話。');
+  voiceController.configureModes(data.voice);
+  voiceController.refreshLocale();
+  setState(data.state);
+}
+$('language').addEventListener('change', () => {
+  const requested = $('language').value;
+  $('language').value = getLocale();
+  if (loading || voiceActive || requested === getLocale()) return;
+  void run(async () => {
+    const response = await api('language', { locale: requested });
+    const locale = response.locale ?? response.state?.locale ?? requested;
+    configure({ ...bootstrapData, ...response, locale, state: response.state ?? { ...state, locale } });
+    // Refresh session state without replacing history, clearing a journey, or creating a session.
+    configure(await api('bootstrap'));
+  });
 });
 await run(async () => {
   const data = await api('bootstrap');
-  if (data.version) { $('app-version').textContent = `v${data.version}`; $('app-version').hidden = false; }
-  $('mode').textContent = data.mode === 'mock' ? '旅遊規劃示範' : 'AI 旅遊規劃';
-  $('voice').querySelector('span').textContent = data.voice.available ? '選擇語音模式' : '語音尚未啟用';
-  voiceController.configureModes(data.voice);
-  setState(data.state);
+  configure(data);
+  if (data.history?.length) $('messages').replaceChildren();
   for (const entry of data.history ?? []) message(entry.text, entry.role, entry.agent);
   scroll();
 });

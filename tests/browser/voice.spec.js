@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { candidateAssets } from './candidate-assets.js';
 
 async function enabled(page, mode) {
+  await candidateAssets(page);
   await page.route('**/api/bootstrap', async route => {
     const response = await route.fetch(), data = await response.json();
     data.voice = { available: true, message: 'Voice Live test transport' };
@@ -53,7 +55,7 @@ test(`microphone user gesture, transcript rendering, mute, stop and track/contex
   await page.goto('/');
   await expect(page.locator('#send')).toBeEnabled();
   await page.locator('#voice').click();
-  await expect(page.locator('#voice-mode option')).toHaveCount(4);
+  await expect(page.locator('#voice-mode option:not([hidden])')).toHaveCount(4);
   if (mode) await page.locator('#voice-mode').selectOption(mode);
   await expect(page.locator('#voice-agent')).toHaveText('等待對話');
   expect(await page.evaluate(() => window.__microphoneCalls)).toBe(0);

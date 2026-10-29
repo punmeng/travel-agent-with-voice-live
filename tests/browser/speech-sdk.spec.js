@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { candidateAssets } from './candidate-assets.js';
 
 function wav(rate) {
   const buffer = Buffer.alloc(44 + rate * 2);
@@ -8,6 +9,7 @@ function wav(rate) {
   buffer.write('data', 36); buffer.writeUInt32LE(rate * 2, 40); return buffer;
 }
 async function sdkPage(page) {
+  await candidateAssets(page);
   await page.route('**/api/bootstrap', async route => {
     const response = await route.fetch(), body = await response.json();
     body.voice = { available: true, modes: { 'speech-direct': { available: true, sttModes: ['rest', 'sdk'] } } };
@@ -29,6 +31,7 @@ async function sdkPage(page) {
   });
   await page.goto('/'); await expect(page.locator('#send')).toBeEnabled();
   await page.locator('#voice').click(); await page.locator('#voice-mode').selectOption('speech-direct');
+  await page.locator('.voice-settings > summary').click();
   await expect(page.locator('#speech-stt')).toHaveValue('rest');
   await expect(page.locator('#voice-finish')).toBeHidden();
   await page.locator('#speech-stt').selectOption('sdk');
@@ -45,11 +48,11 @@ for (const rate of [8000, 16000]) {
     });
     await sdkPage(page);
     await page.locator('#speech-silence').selectOption('1000');
-    await page.locator('#speech-phrases').fill('梅好\n桃園');
+    await page.locator('#speech-phrases').fill('Ni Airlines\n桃園');
     await page.locator('#speech-wav').setInputFiles({ name: 'test.wav', mimeType: 'audio/wav', buffer: wav(rate) });
     await page.locator('#voice-start').click();
     await expect.poll(() => page.evaluate(() => window.__socket?.packets.length ?? 0)).toBeGreaterThan(0);
-    expect(input).toEqual({ stt: 'sdk', source: 'wav', sampleRate: rate, silenceMs: 1000, phrases: ['梅好', '桃園'], chunkBytes: 1280 });
+    expect(input).toEqual({ stt: 'sdk', source: 'wav', sampleRate: rate, silenceMs: 1000, phrases: ['Ni Airlines', '桃園'], chunkBytes: 1280 });
     await page.evaluate(() => {
       window.__socket.receive({ type: 'asr', kind: 'recognizing', text: '東', sequence: 1, elapsedMs: 20 });
       window.__socket.receive({ type: 'state', state: 'thinking' });

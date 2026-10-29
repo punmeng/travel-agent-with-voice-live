@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter, once } from 'node:events';
 import { WebSocket } from 'ws';
-import { bridgeVoice, voiceConfig, voiceSessionUpdate, voiceModes, quoteContext, voiceResponseDetails } from '../lib/voice.js';
+import { bridgeVoice, voiceConfig, voiceSessionUpdate, voiceModes, quoteContext, voiceResponseDetails,
+  pinMemberVoiceLocale, validateMemberVoiceLocaleMapping } from '../lib/voice.js';
 import { AppError, createSession, callTool } from '../lib/core.js';
 import { chat } from '../lib/agents.js';
 import { createApp } from '../server.js';
@@ -20,6 +22,35 @@ class Socket extends EventEmitter {
   event(event) { this.emit('message', Buffer.from(JSON.stringify(event)), false); }
 }
 const tick = () => new Promise(resolve => setImmediate(resolve));
+test('candidate locale mapping is endpoint-bound and pins the ticket version to the session locale', () => {
+  const endpoint = 'https://candidate.services.ai.azure.com/api/projects/travel';
+  const mapping = {
+    metadata: {
+      candidate: true, status: 'ready', activated: false, inferenceTested: false,
+      projectEndpointSha256: createHash('sha256').update(endpoint).digest('hex')
+    },
+    agent: 'meihao-travel-intent-voice', sourceVersion: '5', model: 'gpt-realtime-2.1', store: false,
+    turnDetection: 'azure_semantic_vad_multilingual', tools: ['travel_backend'],
+    startupGreetingType: 'llm_generated',
+    versions: {
+      'zh-TW': { version: '6', getVerified: true },
+      'en-US': { version: '7', getVerified: true }
+    }
+  };
+  assert.deepEqual(validateMemberVoiceLocaleMapping(mapping, endpoint, mapping.agent), { 'zh-TW': '6', 'en-US': '7' });
+  assert.equal(validateMemberVoiceLocaleMapping(mapping, `${endpoint}/wrong`, mapping.agent), null);
+  assert.equal(validateMemberVoiceLocaleMapping(mapping, endpoint, 'different-agent'), null);
+  assert.throws(() => validateMemberVoiceLocaleMapping({ ...mapping, metadata: { ...mapping.metadata, status: 'partial' } },
+    endpoint, mapping.agent), /incomplete or invalid/);
+
+  const candidate = { endpoint, agentName: mapping.agent, version: '5', sourceVersion: '5',
+    localeVersions: { 'zh-TW': '6', 'en-US': '7' } };
+  assert.deepEqual(pinMemberVoiceLocale(candidate, 'zh-TW'), { ...candidate, locale: 'zh-TW', version: '6' });
+  assert.deepEqual(pinMemberVoiceLocale(candidate, 'en-US'), { ...candidate, locale: 'en-US', version: '7' });
+  assert.equal(Object.isFrozen(pinMemberVoiceLocale(candidate, 'en-US')), true);
+  assert.throws(() => pinMemberVoiceLocale({ ...candidate, localeVersions: { 'zh-TW': '6' } }, 'en-US'),
+    error => error instanceof AppError && error.code === 'VOICE_LOCALE_VERSION');
+});
 test('Option1 acknowledges received PCM, including muted packets, without relaxing input guards', () => {
   const t = setup();
   try {
@@ -180,9 +211,18 @@ function setup(s = createSession(), dependencies = {}, config = voiceConfig(env)
   const client = new Socket(), upstream = new Socket();
   const bridge = bridgeVoice(client, upstream, s, env, config, dependencies);
   upstream.emit('open'); upstream.event({ type: 'session.updated' });
-  let count = 0;
+  let count = 0, played = 0;
   return { client, upstream, s, bridge,
     async say(text) {
+      if (dependencies.completePlayback) {
+        while (played < upstream.sent.filter(event => event.type === 'response.create').length) {
+          const id = `fixture-audio-${++played}`;
+          upstream.event({ type: 'response.created', response: { id } });
+          upstream.event({ type: 'response.done', response: { id, status: 'completed' } });
+          const segment = client.sent.findLast(event => event.type === 'audioSegmentDone');
+          if (segment) client.event({ type: 'segmentPlayed', turnId: segment.turnId, segment: segment.segment });
+        }
+      }
       upstream.event({ type: config.realtime ? 'input_audio_buffer.committed' : 'conversation.item.input_audio_transcription.completed', item_id: `item-${++count}`, transcript: text });
       await tick(); return client.sent.findLast(e => e.type === 'result');
     },
@@ -194,13 +234,48 @@ function setup(s = createSession(), dependencies = {}, config = voiceConfig(env)
     displayed(result) { client.event({ type: 'displayed', turnId: result.turnId }); }
   };
 }
-test('four architectures are independently gated; Realtime requires exactly 2.1, no private ID or model fallback', () => {
-  assert.deepEqual(Object.values(voiceModes({})), [null, null, null, null]);
+test('Option1 invalid planning stays connected, reports bounded schema diagnostics and accepts the next turn', async () => {
+  const t = setup();
+  try {
+    await t.say('東京出差五天');
+    const before = structuredClone(t.s.discovery);
+    await t.say('第十五天上午九點到下午五點在東京車站開會');
+    const failure = t.client.sent.findLast(event => event.type === 'taskError');
+    assert.equal(failure.code, 'PLANNING_INPUT');
+    assert.equal(t.client.readyState, WebSocket.OPEN);
+    assert.deepEqual(t.s.discovery, before);
+    assert.equal(t.s.busy, false);
+    const result = await t.say('第二天上午九點到下午五點在東京車站開會');
+    assert.ok(result);
+    assert.equal(t.s.discovery.planning.meetings[0].day, 2);
+  } finally { t.bridge.stop(); }
+});
+test('Option1 waits for a late canceled synthesis terminal before starting the replacement narration', async () => {
+  const t = setup();
+  try {
+    await t.say('我想去東京');
+    assert.equal(t.upstream.sent.filter(event => event.type === 'response.create').length, 1);
+    t.upstream.event({ type: 'input_audio_buffer.speech_started' });
+    await t.say('目的地改去大阪');
+    assert.equal(t.upstream.sent.filter(event => event.type === 'response.create').length, 1);
+    t.upstream.event({ type: 'response.created', response: { id: 'old-audio' } });
+    assert.equal(t.upstream.sent.at(-1).type, 'response.cancel');
+    t.upstream.event({ type: 'response.done', response: { id: 'old-audio', status: 'cancelled' } });
+    assert.equal(t.upstream.sent.filter(event => event.type === 'response.create').length, 2);
+    const count = t.client.sent.filter(event => event.type === 'audioDone').length;
+    t.upstream.event({ type: 'response.done', response: { id: 'old-audio', status: 'cancelled' } });
+    assert.equal(t.client.sent.filter(event => event.type === 'audioDone').length, count, 'duplicate old terminal cannot finish the new turn');
+    assert.equal(t.client.sent.some(event => event.type === 'error'), false);
+  } finally { t.bridge.stop(); }
+});
+test('voice architectures are independently gated; managed agent configuration is explicit and Realtime requires exactly 2.1', () => {
+  assert.deepEqual(Object.values(voiceModes({})), [null, null, null, null, null]);
   const configEnv = { ...env, VOICE_LIVE_VOICE_TYPE: 'azure-personal',
     VOICE_LIVE_PERSONAL_VOICE_NAME: 'offline-private-id', VOICE_LIVE_PERSONAL_VOICE_MODEL: 'DragonLatestNeural',
     VOICE_LIVE_STANDARD_ENABLED: 'true', VOICE_LIVE_REALTIME_ENABLED: 'true', VOICE_LIVE_REALTIME_MODEL: 'gpt-realtime-2.1' };
   const modes = voiceModes(configEnv);
   assert.equal(modes['voice-live'].outputVoice.type, 'azure-personal');
+  assert.equal(modes['foundry-voice-agent'], null);
   for (const mode of ['voice-realtime']) {
     assert.deepEqual(modes[mode].outputVoice, { type: 'azure-standard', name: 'zh-TW-HsiaoChenNeural' });
     assert.ok(!JSON.stringify(modes[mode]).includes('offline-private-id'));
@@ -215,6 +290,33 @@ test('four architectures are independently gated; Realtime requires exactly 2.1,
   assert.equal(voiceSessionUpdate(modes['voice-realtime']).session.parallel_tool_calls, false);
   for (const model of ['', 'gpt-realtime-1', 'gpt-live-1', 'https://evil.example']) {
     assert.throws(() => voiceModes({ ...configEnv, VOICE_LIVE_REALTIME_MODEL: model }), /explicitly/);
+  }
+});
+test('managed Voice Agent requires a project endpoint and keeps its identity out of health output', async () => {
+  const projectEndpoint = 'https://demo.services.ai.azure.com/api/projects/travel';
+  const agentName = 'private-voice-agent';
+  const agentEnv = { ...env, FOUNDRY_PROJECT_ENDPOINT: projectEndpoint, FOUNDRY_VOICE_AGENT_NAME: agentName,
+    FOUNDRY_VOICE_AGENT_VERSION: '3' };
+  assert.throws(() => voiceModes({ ...env, FOUNDRY_VOICE_AGENT_NAME: agentName }), /FOUNDRY_PROJECT_ENDPOINT/);
+  assert.throws(() => voiceModes({ ...env, FOUNDRY_VOICE_AGENT_VERSION: '3' }), /requires FOUNDRY_VOICE_AGENT_NAME/);
+  assert.deepEqual(voiceModes(agentEnv)['foundry-voice-agent'], {
+    endpoint: projectEndpoint, agentName, version: '3'
+  });
+  const server = createApp(agentEnv);
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    const health = await (await fetch(`${origin}/api/health`, { headers: { connection: 'close' } })).text();
+    const bootstrap = await (await fetch(`${origin}/api/bootstrap`, { headers: { connection: 'close' } })).text();
+    for (const body of [health, bootstrap]) {
+      assert.ok(body.includes('"managed":true'));
+      assert.ok(body.includes('"connectionVerified":false'));
+      assert.ok(!body.includes(agentName));
+      assert.ok(!body.includes(projectEndpoint));
+    }
+  } finally {
+    server.closeAllConnections(); server.close();
   }
 });
 test('standard voice uses the unchanged four-agent exact-text path with standard Neural only', async () => {
@@ -731,9 +833,13 @@ test('runtime health identifies personal output type without exposing its resour
     const origin = `http://127.0.0.1:${server.address().port}`;
     const response = await fetch(`${origin}/api/health`, { headers: { connection: 'close' } });
     const body = await response.json();
-    assert.deepEqual(body.voice, { available: true, type: 'azure-personal',
-      modes: { 'voice-live': { available: true }, 'gpt-live': { available: false },
-        'voice-realtime': { available: false, requiredModel: 'gpt-realtime-2.1', configuredModel: null }, 'speech-direct': { available: false, sttModes: ['rest', 'sdk'] } } });
+    assert.equal(body.voice.modes['voice-live'].localeAvailability['en-US'].available, true);
+    const modes = Object.fromEntries(Object.entries(body.voice.modes).map(([mode, { localeAvailability, ...settings }]) => [mode, settings]));
+    assert.deepEqual({ ...body.voice, modes }, { available: true, type: 'azure-personal',
+      modes: { 'voice-live': { available: true, advancedSettings: true }, 'gpt-live': { available: false, advancedSettings: true },
+        'voice-realtime': { available: false, advancedSettings: true, requiredModel: 'gpt-realtime-2.1', configuredModel: null },
+        'speech-direct': { available: false, advancedSettings: true, sttModes: ['rest', 'sdk'] },
+        'foundry-voice-agent': { available: false, advancedSettings: false, managed: true, connectionVerified: false } } });
     assert.ok(!JSON.stringify(body).includes(privateName));
     const bootstrap = await (await fetch(`${origin}/api/bootstrap`, { headers: { connection: 'close' } })).text();
     assert.ok(!bootstrap.includes(privateName));
@@ -925,7 +1031,7 @@ test('voice preserves typed upstream diagnostics and logs no raw messages or cre
 test('voice and text share natural discovery, real handlers, displayed flight options, quote acceptance and checkout', async () => {
   const s = createSession();
   await chat(s, { message: '我想去日本玩幾天' }, { APP_MODE: 'mock' });
-  const t = setup(s);
+  const t = setup(s, { completePlayback: true });
   try {
     let r = await t.say('想賞楓，五天，帶媽媽，不要走太多路。'); t.displayed(r);
     assert.equal(s.discovery.country, '日本'); assert.equal(s.draft.lowWalking, true);

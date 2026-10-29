@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "mock": true,
+    "source": "Synthetic advisory policy for demonstration only; not a real employer policy or approval system."
+  },
+  "policies": {
+    "demo-business-travel": {
+      "labels": { "zh-TW": "公司差旅示範提示", "en-US": "Demo corporate travel guidance" },
+      "advisoryOnly": true,
+      "guidance": {
+        "zh-TW": [
+          "需要評估時程時，詢問會議地點與時間。",
+          "任何購買前，建議查閱實際公司的差旅規範與核准管道。",
+          "未實作公司核准、支出上限、訂位權限或報銷資格。"
+        ],
+        "en-US": [
+          "Ask for meeting location and times when needed to assess schedule fit.",
+          "Suggest checking the employer's real travel policy and approval channel before any purchase.",
+          "No company approval, spending limit, booking authority, or reimbursement entitlement is implemented."
+        ]
+      }
+    }
+  }
+}

@@ -1,8 +1,10 @@
-# 梅好 Airlines AI 旅遊規劃師：系統設計
+# Ni Airlines AI 旅遊規劃師：系統設計
 
 **原始文件快照：2026-10-19；現行交付契約更新至2026-10-24。** 本文件描述 `C:\Code\travelagent` 已實作的本機 POC，不是尚未部署的目標架構。主要讀者為應用、AI、資安及方案架構審閱者；歷史測試紀錄保留當時版本與數字。
 
-目前3100為v1.0.6／啟動build `b451311c607461c4`，本輪文件清理不重啟；啟用與歷史證據見[本機版本交接](CURRENT-VERSION.md)。下方Voice Live架構圖及第11節聚焦模式1；另外三條現行語音路徑及REST／SDK界線見[Foundry指南](FOUNDRY.md#四種語音架構)。Hosted Agent官方Python SDK隔離原型不在下述正式應用路徑中；Azure架構／費用只作唯讀評估，登入、持久化月額度、映像及公開部署皆未實作／未核准。Azure工作維持暫停；Git原始碼快照另經使用者核准。
+**最新會員偏好分區版：`1.0.8/a15841e3240904c1`。**catalog提供雙語compact會員偏好summary，與Current trip分開；Home city只作profile，明示非過往對話記憶。可信登入HTTP chat啟用既有會員排序，public state的ranking metadata僅在實際比較≥2offers且member／trip／meetings／offer IDs相符時投影。Applied note重用既有排序說明、只顯示一次，未提供會議不宣稱meeting-fit。未改語音協定或新增記憶儲存，詳見[目前本機版本](CURRENT-VERSION.md)。下段為前版啟用歷史。
+
+3100目前為已授權啟用的隔離會員／Ni候選，最新對話優先版面`1.0.8/b7e71a814d8692a4`。商務mapping仍8/8/8/6，第五條managed voice依session locale選zh8／en9，同item ASR final作唯一backend輸入；保留有界收音credit與SDK send完成ACK，安全上限不變。Business identity在啟動期載入，managed bridge共用同一server credential，避免收音熱路徑的冷module解析。最新單次paid診斷重現ACK timeout後，離線已修可重現的冷resolver阻塞；使用者另回報5a38版真人語音「should works」，未提供模式／語言／時長。本輪語音協定未變，未新增付費驗證。UI將目前代理與本次session旅程／會員偏好移至desktop側欄，短／窄頁面改底部可折疊區；僅呈現既有public state的allowlist欄位，不新增記憶儲存，明示長期記憶未啟用。以下說明四種原有路徑與第五條管線；最新證據見[本機版本交接](CURRENT-VERSION.md)，四條既有路徑見[Foundry指南](FOUNDRY.md#四種已啟用語音架構)。品牌商務9/9/9/7未啟用，Azure publication另行準備，尚無已發布站點。
 
 > **核心界線：AI 與語音是真實 Azure 服務；航空庫存、航班時刻、機位、票價及結帳均為合成／模擬。系統不接受卡號、不收款、不訂位、不開票，也不是航空公司官方服務。**
 
@@ -329,7 +331,7 @@ requestId綁完整請求fingerprint；同鍵同內容回原結果，不重做；
 
 ### 11.1 為何不是直接接一個voice agent
 
-官方支援prompt-agent直連`agent_name/project_name/agent_version`及瀏覽器WebRTC，但直接接四者之一會繞過本機協調、工具、呈現與交易狀態。本方案因此採官方支援的WebSocket音訊與**server-controlled shared-turn bridge**，沒有部署另一個hosted agent，也沒有把classic agent_id與新版name混用。
+官方支援prompt-agent直連`agent_name/project_name/agent_version`及瀏覽器WebRTC，但直接接四個業務agent會繞過本機協調、工具、呈現與交易狀態。既有四種語音採官方支援的WebSocket音訊與**server-controlled shared-turn bridge**；另有一條獨立的managed Foundry Voice Agent候選路徑，透過同一server backend隔離，詳見11.3。
 
 ```mermaid
 sequenceDiagram
@@ -376,6 +378,14 @@ sequenceDiagram
 語音啟用時停用文字composer及新旅程，避免同session並行寫；文字紀錄持續可讀。停止後可以文字接續，再啟動語音也傳既有顯示context。語音不能用「伺服器現在最新」代替旅客看過的quote；每個結果須有displayed ack，下一轉錄才攜帶該context。
 
 停止、關閉、pagehide、權限拒絕、上游錯誤都會關音軌、worklet、播放sources、AudioContext與socket。支援24kHz AudioContext的新版Edge／Chrome為建議環境；本機loopback屬瀏覽器安全來源。內嵌browser權限或裝置不支援時，改在本機瀏覽器測，不假稱內嵌麥克風成功。
+
+### 11.3 候選Foundry Voice Agent：唯一工具委派回既有後端
+
+第五條語音管線使用managed Voice Agent作原生語音辨識／回答入口，但不取代也不新增業務agent。PCM16 mono 24 kHz由browser經一次性本機ticket連到Node server；Node以Entra連到版本固定的managed agent。該agent只允許strict `travel_backend({message})`，server驗證call、response與input audio item，再等同一item的`conversation.item.input_audio_transcription.completed`。依使用者核准，工具呼叫只作處理trigger，message參數只作診斷；唯一後端輸入為同一committed item的ASR final原文，逐byte保留，不採用模型改寫、不作fallback。相等旗標僅診斷，不驗收ASR品質。後端結果以function output交回Voice Agent朗讀，聊天畫面仍顯示完整權威答案。
+
+`travel_backend`刻意作為唯一雲端工具，而不是把`list_airports`、`search_flights`、`get_offer`、`reprice_offer`逐一複製進Voice Agent。既有旅行chat會依角色調用同一批服務端handlers；語音委派不可自行選工具、提供offer／quote ID、或要求transaction。voice path的transaction hook會拒絕所有交易。最多一個pending音訊item、call／item去重、session busy鎖、回合／音訊上限與cancel wait保留；stop取消可取消的只讀後端工作並清空voice queue，不回滾已完成動作。
+
+轉錄失敗／缺失／逾時、錯item或response不符時不派送；工具message即使有改寫、數字改變、漏詞或指令注入，也不能改變後端原始ASR。保留strict schema／唯一function／response ownership／call-item去重，後端依已驗證session會員及票券locale解析偏好，ASR提出交易仍拒絕。沒有把會員context放進模型instructions。ASR本身的辨識準確性須另外驗收。候選zh v8／en v9先完成mock backend會員往返，後完成真實intent v8／flight v8、同會員value偏好、兩個合成航班與排序及音訊輸出。planner／price、未啟用品牌版本及真人mic／ASR品質未在這次targeted回合驗收。candidate未啟用，3100隔離穩定版保持原樣。
 
 ## 12. 用量、併發與費用邊界
 

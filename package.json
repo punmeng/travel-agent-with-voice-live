@@ -1,6 +1,6 @@
 {
   "name": "meihao-airlines-travel-planner",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,19 +11,28 @@
     "generate": "node scripts/generate.js",
     "export:tools": "node scripts/export-tools.js",
     "deploy:agents": "node --env-file-if-exists=.env scripts/deploy-agents.js --apply",
+    "create:voice-agent": "node --env-file-if-exists=.env scripts/create-voice-agent.js",
+    "create:member-voice-version": "node --env-file-if-exists=.env scripts/create-member-voice-version.js",
+    "create:member-voice-vad-version": "node --env-file-if-exists=.env scripts/create-member-voice-version.js --vad-v5",
+    "create:member-voice-locales": "node --env-file-if-exists=.env scripts/create-member-voice-locale-versions.js --apply",
+    "create:member-voice-mono": "node --env-file-if-exists=.env scripts/create-member-voice-mono-versions.js --apply",
+    "test:member-voice:live": "node --env-file=.env scripts/smoke-member-voice-live.js --apply",
+    "create:ni-brand-agent-versions": "node --env-file-if-exists=.env scripts/create-ni-brand-agent-versions.js --apply",
+    "build:ni-brand-manifest": "node scripts/build-ni-airlines-brand-manifest.js",
     "prepare:knowledge": "node scripts/prepare-knowledge.js",
     "ingest:knowledge": "node --env-file-if-exists=.env scripts/ingest-knowledge.js --apply",
     "mcp": "node mcp.js",
     "test": "node --test tests/*.test.js",
-    "check": "node --check server.js && node --check lib/core.js && node --check lib/journey.js && node --check lib/agents.js && node --check lib/foundry.js && node --check lib/conversation.js && node --check lib/checkout.js && node --check lib/voice.js && node --check lib/replies.js && node --check lib/limits.js && node --check scripts/prepare-knowledge.js && node --check scripts/ingest-knowledge.js && node --check scripts/enable-conversation.js && node --check scripts/smoke-conversation.js && node --check scripts/smoke-voice.js && node --check scripts/smoke-airport-dialogue.js && node --check scripts/smoke-flight-knowledge.js && node --check public/app.js && node --check public/voice.js && node --check public/waiting.js && node --check public/audio-worklet.js",
+    "check": "node --check server.js && node --check lib/core.js && node --check lib/journey.js && node --check lib/agents.js && node --check lib/foundry.js && node --check lib/conversation.js && node --check lib/checkout.js && node --check lib/voice.js && node --check lib/voice-agent.js && node --check lib/replies.js && node --check lib/limits.js && node --check scripts/create-voice-agent.js && node --check scripts/create-member-voice-locale-versions.js && node --check scripts/prepare-knowledge.js && node --check scripts/ingest-knowledge.js && node --check scripts/enable-conversation.js && node --check scripts/smoke-conversation.js && node --check scripts/smoke-voice.js && node --check scripts/smoke-airport-dialogue.js && node --check scripts/smoke-flight-knowledge.js && node --check public/app.js && node --check public/voice.js && node --check public/waiting.js && node --check public/audio-worklet.js",
     "test:voice:live": "node --env-file=.env scripts/smoke-voice.js --apply",
     "test:ui": "playwright test",
     "check:mapping-voice": "node --check lib/city-airports.js && node --check lib/speech.js && node --check lib/speech-sdk.js && node --check public/speech-input.js && node --check lib/gpt-live.js && node --check lib/direct-speech.js && node --check lib/pcm-vad.js && node --check lib/voice-metrics.js && node --check scripts/import-city-airports.js && node --check scripts/create-mapping-template.js && node --check scripts/add-city-tool.js && node --check scripts/configure-personal-voice.js && node --check scripts/smoke-voice-output.js"
   },
   "dependencies": {
-    "microsoft-cognitiveservices-speech-sdk": "^1.53.0",
+    "@azure/ai-projects": "^2.9.0",
     "@azure/identity": "^4.13.0",
     "@modelcontextprotocol/sdk": "^1.20.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.53.0",
     "ws": "^8.18.3",
     "zod": "^3.25.76"
   },

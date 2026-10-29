@@ -1,4 +1,126 @@
-# 本機版本交接：v1.0.6已啟用（2026-10-24）
+# 本機版本交接：v1.0.8雙語版
+
+## 英文後續意圖卡住修正
+
+修正截圖中的 `seach the flight , encomcy, 1 persion` 與 `give me suggest`：
+以有限英文拼字別名保留原訊息證據，搜尋缺資料時問明確機場／日期；
+建議要求進入 planner，不重複探索提問。暫停搜尋與否定艙等仍生效，日期與多機場不猜選，
+交易同意不作拼字模糊匹配。修正英文完整 from/to 航線被誤作待選機場答案、導致兩端混入同一
+機場集合的問題。本輪僅離線回歸，未改雲端指令、版本、映射或語音協定。
+使用者核准停止demo後安全切換；新中英snapshot為 `member-108-progress-runtime`，
+原 `0e66ef1ab507e62c` 保留rollback。實際build與啟用以health及
+`member-progress-activation.json`為準。83項中英與102項候選後端離線回歸通過。
+
+## 會員出發城市確認更新
+
+使用者核准套用至中英 3100 與四語隔離候選。登入／reset 後預填 profile city 至 Current trip
+的 pending suggestion，不寫入權威 origin；確認 token＋contextVersion 綁定目前 session。
+明確不同出發地優先，多機場城市不自選機場。登出／切帳號清除 token，reset 重新產生。
+確認由 deterministic backend 執行，不新增模型呼叫、memory、雲端版本或付費測試。
+3100 的原 `a15841e3240904c1` runtime 保留為 rollback；以下舊紀錄描述之前啟用版本。
+新 snapshot 為 `member-108-origin-final-runtime`；實際啟用 build 以 `/api/health` 與獨立
+`member-origin-activation.json` receipt 為準。中英確認／會員 UI 離線 browser 9/9，
+四語候選 browser 2/2 通過；1366×768 對話可視474px，390×844 為380px。
+
+## 目前3100狀態（最新已知檢查：2026-10-29）
+
+**會員偏好分區版：v1.0.8／`a15841e3240904c1`。**保留對話主區與側欄版面；會員偏好獨立compact卡，來源為驗證過的persona catalog雙語summary，與Current trip分開。Home city標為「僅為個人檔案，未選為出發地」，來源標「示範個人檔案 · 非從過往對話學得」。Alex為Business且preferredCabin=null，顯示白天出發優先、提供會議時間後才比較適配；各persona沿各自目錄，沒有Alex-only分支。未選的profile cabin軟預設不冒充本次輸入，明確艙等優先。
+
+原HTTP文字chat沒有啟用既有memberAware排序，現由可信session.memberId啟用；語音協定不變。後端Applied metadata只在rankMemberOffers實際比較至少2offers後建立，即使排序順序未變仍可顯示，並綁定member／trip／meeting blocks／ordered offer IDs。修改條件、新搜尋、切換帳號、登出或reset後舊evidence失效；訪客、單offer及未rank結果沒有成功式note。UI將既有個人化排序文字呈現為航班旁note一次，不重複；無meeting時明說需提供meeting時段，未宣稱適配已套用。長期記憶仍未啟用。本輪90/90後端、44/44離線browser回歸通過；1366×768文字模式messages474px、390×844為380px。新隔離runtime的served hashes與build須一致核對，b7版runtime及receipt保留回復；無付費live、雲端版本／mapping／.env、commit／push或Azure部署。下方為前次版面與語音歷史。
+
+**對話優先版面：v1.0.8／`b7e71a814d8692a4`。**閱讀區為主體，desktop右側顯示目前代理／進行或完成狀態，以及「本次對話脈絡」；窄／短視窗移至可折疊底部區。只投影既有server public state的出發／目的航點、日期、人數、艙等、少步行與會員偏好，不顯示內部prompt或認證資料；明示「長期記憶尚未啟用」，未新增跨旅程記憶。語音控制改為緊湊同列，設定與說明預設收合，保留面板slider／原生resize及寬度還原；大尺寸受viewport cap約束。短／窄頁面可捲動，避免再把messages壓至零。相同history／會員／英文第五模式fixture的真browser量測：2000×1177為511→715px、1366×768為102→306px、390×844為40→380px、1000×589短視窗為56→265px；單位為CSS px。啟用後請重新整理並登入。前版`5a38aad2c69665f2`隔離runtime保留回復。
+
+**使用者真人回報：**「i have test the voice, should works」，指當時`5a38aad2c69665f2`；未提供模式／語言／時長等數值，不擴充為完整驗收sweep。本輪只改版面與狀態投影，未改語音協定、呼叫付費推論、改mapping／.env或部署Azure。以下診斷與待驗敘述保留歷史時間點。
+
+**最新修正版：v1.0.8／`5a38aad2c69665f2`。**完整來源與會員資產製成新的隔離runtime；identity改為啟動期載入，managed bridge把同一server credential交給business backend，smoke backend移除收音中的dynamic import。business8/8/8/6、voice zh8/en9、12,288-byte queue及2秒ACK timeout皆保留。101/101相關Node與3/3真browser／官方SDK Node transport離線案例通過：冷identity resolver、64,374ms持續收音並行backend／output／mute／stop、以及真正3秒send stall的明確逾時。未作第二次付費測試；真人mic與修正版真實往返仍待驗。以下為診斷與先前啟用歷史。
+
+**唯一獲准的90秒繁中診斷：71,700ms內重現ACK timeout，立即停止。**先啟完整診斷版`3052c77cd253125c`，再以同份snapshot的獨立會員session測試。SDK534次send全完成（最大29ms），server534次ACK callback全完成，browser收到相同2,187,264-byte offset；另3包12,288 bytes在stop前入queue而未開始SDK send，沒有服務error。same-item final ASR已接納、會員context已交接，尚無backend結果或輸出音訊。這些計數證明先前已完成包的ACK沒有遺失；同批收到audio與stop會取消尚未開始的microtask，不能只由pending=false認定inputChain互鎖。
+
+非付費CPU profile記到同步module stat約5.1秒、lstat約2.5秒。以真正browser／bridge／SDK Node transport，在收音後的`invokeFoundry` lazy identity resolver注入3秒解析延遲，重現相同「已完成SDK／ACK／receipt一致、另3包queue、pending=false」的逾時；移到啟動期後同案例通過。實際付費回合沒有CPU stack，該次具體filesystem呼叫仍缺直接證據。沒有儲存raw ASR／PCM／工具參數，沒有加大queue／timeout、重試、English、新cloud版本／資源／mapping、stage／commit／push。private安全證據在`staging/member-voice-browser-flow-live-evidence.json`與`staging/member-voice-flow-offline-evidence.json`。
+
+**09:57後授權重啟：流控修正已整套啟用，v1.0.8／`6ebc077834ab7c2e`。**另製member-108-flow-runtime隔離snapshot，離線確認新版backend ready/ACK與frontend credit皆存在，effective business8/8/8/6、voice zh8/en9不變；精確停止自有member-candidate-3100後，以member-flow-3100持續背景程序啟動。12個served資產SHA符合新候選，health／示範登入value／登出／切語言保留會員／兩語第五模式可選／桌面及390px頁面皆通過，browser errors及failed request皆0。沒有付費live推論、.env或mapping修改、新雲端版本、stage／commit／push。原candidate `3bc414217480ee17`及stable `111621bc136e5766`的runtime與啟用證據均保留可回復。使用者須重新整理頁面、重新登入，再開第5模式；真人mic修復效果仍待下一次驗收。下方「未套用修正」為先前故障調查快照。
+
+**09:51:19真人測試故障：第五模式pending-send上限。**運行中build仍`3bc414217480ee17`，沒有重啟或替換。連線48,497ms，client計數549×4,096＝2,248,704 bytes（含觸限frame），SDK完成545×4,096＝2,232,320 bytes；第4個未完成frame令pending超過既有12,288 bytes，bridge以`VOICE_AUDIO_LIMIT`停止。總session上限576,000,000 bytes未耗盡。VAD start／stop／commit／final皆1、service error0，同item ASR已接納並開始backend；沒有此次完整結果／音訊成功證據。現有trace未記queue等待時間及rate-window，無法區分SDK送出變慢與瀏覽器封包集中到達的占比。
+
+本機重現確認第五模式未沿用Option1的capture credit及input ACK，空browser bufferedAmount仍可在SDK等待時送第4包。工作區已補同一12,288-byte有界流控、SDK send完成後單調ACK、靜音在途包依序消耗credit但不送SDK、延遲略過提示及2秒ACK timeout；backend session／rate／queue上限未放寬，新增`limitReason`及安全queue／rate metadata。79/79 Node與8/8最小browser回歸通過，僅短命mock3101，沒有付費重跑。修正尚未裝入隔離3100 runtime，須使用者確認受控重啟；active snapshot receipt與新候選asset hashes分開保留。下方為啟用及先前驗證歷史。
+
+**最新啟用：會員候選已於本機3100啟動，v1.0.8／`3bc414217480ee17`，foundry模式。**依使用者明確核准，先核驗48個來源及12個候選資產hash，將目前Team-Ni來源及完整member-public製成工作區外隔離runtime；停止自有stable-108-3100後，以可持續背景程序啟動候選。health及12個實際served資產全部符合，示範會員登入／value persona／空初始旅程／登出、桌面及390px無溢出皆通過，browser error與failed request皆0。商務mapping仍intent8／planner8／flight8／price6，managed voice依票券locale選zh8／en9，第五模式可選。沒有啟用品牌商務9/9/9/7、改.env、額外付費推論、commit／push；沒有替換工作區public。私人啟用證據在ignored `staging/member-local-activation.json`，source snapshot manifest hash與實際served資產hash分別記錄。穩定runtime `1.0.8/111621bc136e5766`已停止但保留回復資料。真人mic／聽評留待使用者測試，四語及memory未實作。下方未啟用敘述均為歷史快照。
+
+**09:38最新結果：中英真實會員航班往返通過，候選未啟用。**使用者核准ASR final作唯一來源後，strict工具呼叫只作trigger，model message不作資料／指令／同意或fallback；相等旗標僅診斷。保留同committed item、active response、strict function/schema/count、去重、序列化及交易guard，等final補上30秒timer。87項離線後，mock旅行backend的zh/en往返通過；接著真實Foundry backend首輪僅intent／audio成功但沒有航班，未冒充完整搜尋。公開合成句重現`turnWork`搜尋詞到航班詞0..16字距離限制；新增沿用flightOnly、句首明確搜尋詞的小範圍分支，排除規劃／飯店／價格／交易，負向及pause照舊。126/126相關回歸通過後，只作一次修正後zh確認及成功後一次en確認。
+
+兩語各真實intent v8及flight v8一個call，memberPreferences實際到達兩個business request（value／票券locale相符），TPE→NRT、2026-11-12、一成人經濟艙各2個合成offer，總價8,900／9,100 TWD，value排序可見。zh usage12,034 tokens、input679,200／output1,226,400 bytes；en usage11,649 tokens、input629,400／output865,200 bytes。兩語VAD start／stop／server commit／final各1，service error0，audioDone／captured／flush皆true。同item final原文字節交給後端，即使model參數改寫亦不影響；不保存raw ASR或PCM。沒有訂位／支付／選班。voice版本8／9未改，品牌9/9/9/7未啟用或live驗收；planner／price、其他persona live、真人mic及ASR聲學品質仍待驗。私有真實證據在ignored `staging/member-voice-real-backend-evidence.json`，先前失敗另存session files。
+
+下一階段僅排隊：調查中／英／日／韓自動LID、同session語言切換及input/output voice政策，尚未實作、未建立語言資源或新版本；memory仍獨立延後。stable3100仍隔離1.0.8／111621bc136e5766，沒有候選啟用、.env、commit／push。下方阻塞記錄保留歷史，不再表示當前ASR-authoritative架構的狀態。
+
+**09:26最新阻塞（使用者核准窄化句末處理後）：**只允許單一結尾`。 . ？ ? ！ !`差異，延用trim／whitespace normalization；ASCII dot遇數字結尾、重複點、initial／dotted acronym／已知縮寫等歧義不移除。不是以忽略全部Unicode標點作接受。後端仍接收同item ASR final原始UTF-8內容，沒有修剪／替換原文；86/86離線及八條實際loopback落檔檢查通過，包含原文bytes交接、先／後到final、內部標點／數字／漏詞／改寫／錯item阻擋。
+
+獲准的一次真實zh v8：ASR長14、delegated長12；exact／whitespace／terminalOnlyEqual／punctuationOnlyEqual／numericOnlyEqual全false，四個association皆true、accepted=false，仍`VOICE_AGENT_TRANSCRIPT_MISMATCH`。此輪是超出句末標點的差異，沒有原文字詞證據，未推定具體漏詞或改寫。59次append／282,000 bytes，VAD start／stop／commit／final各1，service error0；實際backend／會員context／tool output／output audio皆0。立即停止，未English、未重試、未擴大容錯或改雲端版本。第五模式仍未完成會員語音驗收；下方09:06等為歷史。
+
+**09:00首次no-audio確認：**runtime `session.update`已移除整個audio物件，只送`{type:'realtime'}`；實際SDK wire、早到ACK及effective locale／instructions／PCM／mono echo／VAD／tool guards離線84/84通過後，僅執行一次zh v8確認。服務error為0，59次append／282,000 bytes，speech_started、speech_stopped、committed、transcription.completed各1，failed為0，無client explicit commit。自動greeting取消後，app要求的response完成且含唯一`travel_backend` call；但本機逐字稿匹配gate回`VOICE_AGENT_TRANSCRIPT_MISMATCH`。backend／會員context／tool output／輸出音訊皆0；未測英文或重試。這輪沒有保留ASR原文或比較metadata，不能判定實際差異為標點。
+
+**09:06最新阻塞（審閱後僅一次確認）：**七案例落檔capture審閱後，獲准的單次zh v8結果已確認comparison：ASR長14、工具message長13，exact=false、whitespace=false、忽略Unicode標點相等=true、遮蔽數字後相等=false，四個response／item association布林皆true，accepted=false。因此本輪可定位為標點差異類別；缺少原始字元／位置，未假定只是句末句號，也未追認09:00同因。59次append／282,000 bytes，VAD start／stop／commit／final各1，service error0；實際backend／會員context／tool output／輸出仍0，未English／重試。exact／whitespace gate保持原樣。下一步需要決策是否允許限於句末句號／問號／驚嘆號的窄化容錯；不能直接以目前涵蓋所有Unicode標點的診斷旗標放行。沒有實作放寬或新增雲端版本。
+
+**後續離線調查（相關85/85通過）：**SDK 2.9保留final event的`item_id`／`content_index`／`transcript`；bridge以committed item對應ASR，再以active app-requested response綁定工具。新增bounded comparison metadata：兩邊長度、exact／whitespace／忽略標點／遮蔽數字後相等旗標，以及response／item association布林值；不保存原文或item ID。只准原本whitespace-equivalent通過，標點差、數字改變、漏詞及語意改寫仍拒絕。真實loopback＋注入SDK的七案例落檔檢查包含先到／後到final、錯item拒派、非零append及close flush。另修smoke runner把工具參數與加了UI前綴的「需求摘要」比較的驗收錯誤，改驗bridge的同item／同response比較結果；這個harness錯誤發生在成功路徑驗收，沒有造成上輪bridge mismatch。下一次付費測試須先審閱新capture與修正；3100維持隔離穩定版，候選未啟用。
+
+**08:44穩定版已隔離恢復：**依使用者選擇「啟動穩定版 v1.0.8（不含本輪候選）」，從immutable checkpoint commit `65c852f24f7c7981fec29ef7ec2cb534718c52fe`還原到工作區外的session runtime。35個release來源／資產hash全部符合，僅還原原release換行格式以符合精確bytes，啟動前離線計算亦為`1.0.8/111621bc136e5766`。啟動後health同值、home200且bytes符合release、bootstrap1.0.8；目前為本機foundry模式。所有直接依賴與stable lock版本相同，僅複用既有node_modules及原presentation／language映射，唯讀使用原.env；沒有套用本輪會員／Ni品牌／第五模式。Team-Ni工作區、HEAD及候選保持不動，未commit／push。下方3100拒絕連線段落為先前檢查。
+
+**Team-Ni提交準備：**root README已改為英文，原有中文指南仍保留連結。相關95項與兩組syntax檢查通過；完整Node初跑267/268，唯一Python workbook-reader 30秒timeout在單獨7/7重查通過。Browser初跑72/78，六項舊selector將會員登入欄位／hidden第五選項誤算，精確排除後以最小selector重驗6/6通過。測試只使用短命mock3101，與stable3100分離；完整allowlist及draft commit message保留在session files，沒有stage／commit／push。私人staging映射／evidence／manifest被ignore，只允許12個member-public來源資產。知識snapshot仍有舊示範品牌標籤，本輪未改寫或重新ingest雲端知識。
+
+**08:14歷史阻塞：**使用者核准的mono immutable版本已建立並GET驗證：zh v6→v8、en v7→v9，每版僅改echo `reference_source:client→server`及`channels:2→1`，舊6／7完整hash不變。runtime映射8／9，不在session要求改echo channels。95/95相關離線測試後，只執行一次zh v8：effective ACK的mono/server-reference、PCM24k、zh-TW轉錄／voice／instructions及原VAD／tool choice均符合；約264ms收到`invalid_request_error`／`param=voice`。client送1 frame／4,800 bytes，bridge接受及SDK append皆0；VAD／commit／轉錄、tool／backend／會員委派及輸出音訊皆0，captured／flushed皆true。未測英文、未重試；第五模式仍blocked／`inferenceTested=false`。GET確認8／9的output `voice_type=azure-standard`，分別HsiaoChen／Ava，PCM24k。該輪隱私allowlist沒有保留service message或client-event關聯，缺少可區分greeting與session.update拒絕的證據；不以`param=voice`推定根因。完整本機證據保留在忽略的staging；英文README提供公開狀態與重現步驟，不含私人部署設定。品牌9/9/9/7及所有候選未啟用，沒有改.env／啟動3100／commit／push。
+
+**08:09歷史阻塞：**v6及當時latest v7的client-reference雙聲道設定與mono client衝突，服務拒絕session channels 2→1（`change_in_ec_channels_not_allowed`）。這促成後續經核准的8／9兩欄版本；下方6／7與07:33內容保留歷史。SDK `Uint8Array`音訊delta相容修正亦已離線驗證，尚無本輪真實輸出音訊。
+
+對`http://127.0.0.1:3100/api/health`最近一次唯讀檢查（2026-10-29 04:56:32 +08:00）回報連線拒絕；本次未重啟、未清除旅程、未套用候選資產。managed WebSocket不能呼叫avatar-only `output_audio_buffer.clear`；bridge已移除此呼叫並以browser本地清佇列處理interrupt。v6/v7 session locale ACK符合固定設定。07:33完成離線鏈路審閱後獲准的一次zh-TW v6單一SDK連線診斷：90秒`VOICE_TURN_TIMEOUT`，client／SDK／bridge均59 frames／282,000 bytes；captured／diagnosticsFlushed皆true，兩層speech_started/stopped、commit、轉錄及error皆0。只有自動greeting且已取消；app response request、travel_backend/tool/backend/member委派及輸出音訊皆0。未接續English或再重試。舊回合缺失trace仍為未知，保存在session files；最新schema2結果在`staging\member-voice-live-evidence.json`。v6/v7仍未啟用且`inferenceTested=false`。Ni Airlines品牌候選包含Logo及四個商務prompt agent新版本，尚未啟用；詳細對照見`staging\ni-brand-agent-versions.json`及`staging\ni-airlines-brand-manifest.json`。
+
+### 最新候選驗證：雙語會員語音版本
+
+**診斷鏈路新增離線證據（2026-10-29）：**同一smoke runner透過真實本機HTTP／WebSocket路由，驗證三條相同locale、獨立session的連線；SDK與合成器離線注入。`staging\member-voice-offline-capture-evidence.json`已重新讀檔斷言wire／bridge的speech started/stopped、committed、轉錄completed/failed完整順序，以及2／3次append＝9,600／14,400 bytes。timeout案例亦證明延遲SDK close中的事件會先flush再序列化。票券hash＋server connection WeakMap取代按locale尋找，並移除多餘未使用的SDK連線；不保存票券、cookie、原始PCM、逐字稿或服務訊息sentinel。相關三檔測試65/65通過。這份離線產物與歷史live證據分開，live仍為timeout／`inferenceTested=false`；暫停後續live支出直到報告審閱，未啟用／啟動3100或改雲端版本。
+
+**審閱後的一次真實診斷：**只有一條server-owned SDK連線，已完成append但沒有任何回傳VAD／commit／轉錄事件；服務端接收、解碼及VAD處理紀錄仍缺。SDK已知事件deserializer表包含上述事件，沒有本機事件型別缺漏的證據；不推測補送commit或另建版本。移除多餘SDK連線後仍逾時，未宣稱舊根因；TTS重新合成的hash與舊回合不同，僅文字／PCM格式及長度相同。下一步是服務端接收／解碼契約或支援trace調查，現階段不再live或進入English。詳細計數與拓撲見FOUNDRY文件「單一SDK連線真實診斷」。
+
+`meihao-travel-intent-voice` v6僅改instructions及`audio.output.voice_locale=zh-TW`；v7僅改instructions、`audio.input.transcription.language`、`audio.output.voice`與`voice_locale`為en-US。兩版皆源自v5，保留`gpt-realtime-2.1`、multilingual semantic VAD、strict `travel_backend`及`store=false`。v5 GET原本省略optional `voice_locale`；locale creator允許該省略，並以新版本GET逐欄確認locale確實固定。繁中／英文精確版本映射為v6／v7，候選記錄及definition hash在`staging\member-voice-locales.json`；實際ACK證據在`staging\member-voice-locale-ack.json`。只完成設定ACK，不宣稱音訊、推理、代理委派或真人聲學驗收。candidate mapping未套到`.env`；3100仍未啟動／重啟，沒有啟用語音候選。
+
+## v1.0.8中／英add-on驗證紀錄（啟用前快照，2026-10-27）
+
+**尚未安裝新前端、未重啟3100、未清旅程、未commit／push。** 運行中仍為v1.0.7／`578ae578a2f9b6f5`，網址`http://127.0.0.1:3100`；工作區`package.json`／lock為1.0.8。新前端完整放於本session的`files\english-public`，有獨立SHA-256 manifest，不能將後端候選版本誤當已在3100啟用。
+
+完成UI／回答／錯誤／四語音的嚴格`zh-TW`／`en-US`串接，保留原中文。切換只改session.locale，保留trip、contextVersion、quote、consent及歷史原文，進行中的請求／語音拒絕切換；voice ticket與認證前後核對locale，禁止不同旅程互相改全域設定。英文確定性呈現不翻譯或重寫權威ID、班號、金額、幣別、日期與來源證據；summary／detailed語音與完整畫面分開。英文可用完整月份日期、成人數、艙等、少步行、逐日會議／活動、住宿及TWD合計預算；mock仍是有限語句，不能聲稱任意英文理解。
+
+已獲使用者明確核准，四既有Foundry agents新增intent8／planner8／flight8／price6，舊intent7／planner7／flight7／price5保留。僅instructions改為後端locale控制，原模型／工具／知識／JSON schema均保留。`.foundry\language.json`為忽略的候選對照，不修改.env或舊presentation；啟動新來源後才套用，project hash＋四名稱／source版本全部符合才一次映射。
+
+真實服務證據：四輪英文Foundry整合（5天出差、2／3天會議、4天下午活動、4晚住宿／合計預算、查合成航班）8次模型呼叫、45,398服務tokens；切回中文摘要不再呼叫模型且保留全部條件。Option1既有男／女Personal Voice英文分別101,792／103,840 PCM bytes；Option4原profile英文SSML100,768 bytes，同一句REST辨識及SDK 1 final成功。Option2英文固定`en-US-AvaNeural`、Option3 `marin`均獲真實session ACK；兩者尚無本輪原生英文對話／音訊生成聽評。中文原聲音及所有queue／交易限額保留，沒有新增資源／hosting或fallback聲音。
+
+核心驗證全套Node **219/219**、browser **74/74**；browser使用隔離mock helper＋完整候選資產，不更動3100 public，詳細最終結果記於本session release manifest。收音ACK回歸先確認測試啟動前已送出的累計bytes，再核對額外未確認量恰為12,288 bytes，修正測試起點競態，沒有放寬正式流控。證據：`english-foundry-live.json`、`english-node-final.log`、`english-browser-candidate-final.log`及忽略的`.foundry\language-verification.json`／`english-voice-proof.json`。原生委派語意截句、ASR同音詞及真人聲學效果仍有既有界線，未標為全數解決。
+
+啟用需另獲窗口：核對`english-release-manifest.json`及候選SHA，停止自有3100，整批套入候選public及`english-build-assets.patch`，再啟動3100並reload。新`/i18n.js`為明確static allowlist；build須同時包含i18n／waiting及所有新模組。此受控重啟會中斷語音、清除記憶體旅程；沒有新的啟用授權前不操作。
+
+## v1.0.7實際啟用
+
+使用者選擇「現在套用並重啟3100」後，依`queue-release-manifest.json`核對三個候選SHA-256，整批安裝`public\voice.js`、`voice-options.js`、`voice-options.css`並將新helper／CSS納入啟動build。停止自有舊服務後僅啟動一次3100：**v1.0.7／`578ae578a2f9b6f5`**，網址`http://127.0.0.1:3100`。舊語音中斷、記憶體旅程清除；舊cookie讀bootstrap得到新cookie及空trip／0回合。health、bootstrap版本與桌面／手機實際頁尾均v1.0.7；bootstrap本身沒有build欄位，build以health為準。
+
+實際served三檔內容與候選一致，共用module HTTP200。1440／390px確認四模式進階設定、預設值、預設收合、無水平溢出，Option1仍為緊湊個人化男聲／女聲、預設男聲，其他模式隱藏。8筆本機ticket請求確認有效設定／女聲key接受及跨模式／未知GPT voice拒絕；沒有開語音WebSocket、取得麥克風或呼叫付費模型／合成。連線disabled／停止恢復及queue行為沿用前述候選離線回歸證據，未作新真人live驗收。啟用證據：session files的`release-107-activation.json`、`release-107-ui.json`及桌面／手機截圖。
+
+只保留3100；未commit／push。下方「待啟用」內容保留本次啟用前驗證快照，不代表現在仍未部署；SDK／GPT／歷史診斷及聲學驗收限制仍有效。
+
+## v1.0.7啟用前候選驗證紀錄
+
+後端、測試及文件位於目前工作區，**尚未commit／push、未重啟3100**。新前端`voice.js`、`voice-options.js`、`voice-options.css`保留在本session的`files\queue-public`，未熱改repo的`public`；隔離browser以route override驗證。部署窗口批准後必須三檔一起套入`public`、納入啟動build雜湊，再受控重啟3100及reload；重啟會中斷語音、清除記憶體旅程。不要僅重啟後端當作整合完成。下方v1.0.6段落是啟用／調查歷史快照。
+
+| 問題 | 候選修正與證據 | 尚存界線 |
+|---|---|---|
+| Option2插話busy | 保留已執行工具與後端鎖，最多一個committed新需求；工具完成及舊response終態後序列派送，去重／交易守門保留 | 離線事件序列回歸；未做真人live插話驗收 |
+| Option1 ZodError／舊朗讀競態 | 重現超範圍會議天數、跨午夜時段、住宿晚數；先原子驗證，已知無效需求回taskError並保持連線。補有界schema path/code與stage，不記輸入內容；新朗讀等待舊取消終態，含遲到created／重複done | 10:36舊log無issues，無法追認其唯一根因；未知錯誤不吞掉、不一律聲稱偏好保留 |
+| SDK第一final後漏句 | 真實Azure在同connection重用resultId；改以ID＋offset＋duration去重。原兩句WAV、原EOF／endpoint取得2final，真實WebSocket→SDK→Foundry→Personal Voice TTS：2 backend results、896,832 bytes、2 timed ACK/resumes、errors=[] | 計時模擬播放ACK，非喇叭／真人聽評；11:33舊截圖沒有resultId，不能斷言唯一歷史原因 |
+| GPT原生委派截句 | 獨立delegation序列處理；offset切過片段或缺覆蓋時不交backend、不改旅程，以官方thinking／commentary要求重說、保持連線 | 沒有官方完整語句終點事件；恰落片段邊界但語意不完整者仍可能無法偵測。不加ASR或送出按鈕，不接offset外字 |
+| 共用播放／收音queue | 清理舊播放、單調segment ACK、忽略錯turn audioDone；Option1失去輸入ACK明確逾時，不無界積壓。Direct resume只在本輪已完成時生效、與finally釋鎖序列協調；新版協商turn-bound resume，保留舊client | 保留原音訊／待辦／工具限額；停止不回滾已執行動作 |
+
+新進階設定每模式獨立、單一收合面板、可恢復預設、連線中disabled；固定單次session config，不改全域`.env`。Option1／2 VAD：500／700／800／1000／1200ms（預設800），Azure降噪／AEC預設開，只有Option1提供最多100×100字phrase。GPT以有限語言／用詞／風格preset保留全部交易守門，只核驗marin；其他音色未核實。REST本機VAD：500／700／1000／1200／1500ms（預設1000）。SDK：700／1000ms分段、同phrase限額，20／40／80／100ms區塊；PCM16 bytes＝sampleRate×ms÷1000×2，mic固定16k、WAV沿用8／16k真實header，預設1280 bytes。區塊不是VAD。
+
+Voice Live既有API版本2026-07-15的`session.updated`已回應Option1 phrase／VAD及Option2 VAD、關閉降噪／AEC；GPT最短`session.started`回應marin，這些ack測試沒有輸入音訊，不能當聲學驗收。證據在session files：`voice-settings-ack.json`、`sdk-queue-final-service.json`、`sdk-queue-live-integration.json`。沒有新增雲端Agent版本或資源。ASR同音詞／「都OK」與原話差異未列為已修。
+
+離線全套Node 198/198、browser 52/52通過；最後追加partial-only EOF終態處理後，再跑SDK／Direct 32/32通過。browser核心voice／playback／SDK用route override載入候選client，涵蓋新版及legacy capabilities；不啟動付費連線。兩套語法檢查通過。`queue-release-manifest.json`保存候選三檔SHA-256、運行中build、public未變與零私人設定匹配；`queue-build-assets.patch`已備妥供部署窗口三檔安裝後納入build，尚未套用。只保留3100，未commit／push。
+
+## v1.0.6已啟用歷史
 
 目前3100啟動build為 **`b451311c607461c4`**，版本仍為v1.0.6；下方`f35b73acf22f25de`保留為首次啟用紀錄。現行緊湊選單僅在Option1顯示「個人化男聲／個人化女聲」，預設男聲；後端只接受`alexpun`／`athena`白名單key，連線期間禁止切換。Option4 REST／SDK維持男聲。build是啟動時快照，不代表後續工作區編修已載入；本輪文件清理未重啟服務。
 
@@ -125,7 +247,7 @@ GPT第六句截斷、SDK第八句第二段缺失仍未解決。本次不變更ST
 
 Direct Speech只接受精確`DIRECT_SPEECH_ENDPOINT=https://<resource>.cognitiveservices.azure.com`資源root；用`DIRECT_SPEECH_RESOURCE_ID`配Entra或`DIRECT_SPEECH_KEY`。`DIRECT_SPEECH_PERSONAL_SPEAKER_PROFILE_ID`必須為獲核准GUID，不能重用／猜Voice Live的私人voice name。`DIRECT_SPEECH_PERSONAL_VOICE_MODEL`為`DragonLatestNeural`、`DragonHDOmniLatestNeural`或`PhoenixLatestNeural`。送出flush包含最後partial worklet buffer，排程PCM播完才恢復收音。Professional Voice接點已實作：明確`azure-custom`加`VOICE_LIVE_CUSTOM_VOICE_NAME`／`VOICE_LIVE_CUSTOM_VOICE_ENDPOINT_ID`映射`name`／`endpoint_id`；須訓練完成、獲授權且同資源，**目前未配置資產**。
 
-完整設定及官方來源見[Foundry指南](FOUNDRY.md#四種語音架構)；同一客戶講稿、臺灣聽評、slot／intent及量測方法見[比較指南](VOICE-COMPARISON.md)與[示範講稿](DEMO-SCRIPT.md)。browser顯示同一server單調時鐘算出的numeric stage durations，另量本機first packet→playback scheduling delay，非實際聲學出聲。GPT分開記backend結果前`frontend_audio`及結果後`first_audio`，後者不代表語意答案完成。metrics只保留最後一回合numeric IDs／數值於記憶體，無持久報表／下載、不存錄音／逐字稿，不跨host相減、不列未量測排名。
+完整設定及官方來源見[Foundry指南](FOUNDRY.md#四種已啟用語音架構)；同一客戶講稿、臺灣聽評、slot／intent及量測方法見[比較指南](VOICE-COMPARISON.md)與[示範講稿](DEMO-SCRIPT.md)。browser顯示同一server單調時鐘算出的numeric stage durations，另量本機first packet→playback scheduling delay，非實際聲學出聲。GPT分開記backend結果前`frontend_audio`及結果後`first_audio`，後者不代表語意答案完成。metrics只保留最後一回合numeric IDs／數值於記憶體，無持久報表／下載、不存錄音／逐字稿，不跨host相減、不列未量測排名。
 
 ## 既有業務基線
 

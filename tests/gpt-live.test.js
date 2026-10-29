@@ -8,6 +8,13 @@ import { createApp } from '../server.js';
 
 const env = { APP_MODE: 'mock', GPT_LIVE_ENABLED: 'true', GPT_LIVE_ENDPOINT: 'https://demo.openai.azure.com/' };
 const tick = () => new Promise(resolve => setImmediate(resolve));
+async function waitFor(predicate) {
+  for (let i = 0; i < 20; i++) {
+    if (predicate()) return;
+    await tick();
+  }
+  assert.fail('condition did not become true');
+}
 test('GPT-Live retains source citations on screen while excluding them from commentary', async () => {
   const canonical = '航班價格均為模擬。\n\n知識來源（合成示範靜態快照）：flights.txt';
   const t = setup({ chat: async () => ({ text: canonical, state: { offers: [] } }) });
@@ -183,6 +190,50 @@ test('missing, partial-boundary and stale delegation never run guessed turns or 
     assert.equal(t.client.sent.at(-1).code, 'GPT_LIVE_PROTOCOL');
   } finally { t.bridge.stop(); }
 });
+test('delegation beyond transcript coverage fails closed and late fragments cannot leak into the next turn', async () => {
+  const received = [];
+  const t = setup({ chat: async (_session, args) => {
+    received.push(args.message);
+    return { text: `收到：${args.message}`, state: { activeAgent: 'planner' } };
+  } });
+  try {
+    t.input('東京', 0, 50);
+    await t.delegate('incomplete', 100);
+    assert.equal(t.client.sent.find(e => e.type === 'taskError').turnId, 'incomplete');
+    assert.deepEqual(received, []);
+
+    t.input('開會', 50, 100);
+    t.input('大阪', 100, 200);
+    await t.delegate('next', 200);
+    assert.deepEqual(received, ['大阪']);
+    assert.equal(t.client.sent.filter(e => e.type === 'result').at(-1).turnId, 'next');
+  } finally { t.bridge.stop(); }
+});
+test('a transcript fragment cut by the delegation offset asks for a repeat without dispatch or journey mutation', async () => {
+  const received = [];
+  const t = setup({ chat: async (_session, args) => {
+    received.push(args.message);
+    return { text: '已收到', state: { activeAgent: 'planner' } };
+  } });
+  t.session.discovery.destinationCity = '原有旅程';
+  try {
+    t.input('東京車站附近開會', 0, 100);
+    await t.delegate('cut', 80);
+    assert.deepEqual(received, []);
+    assert.equal(t.session.discovery.destinationCity, '原有旅程');
+    assert.equal(t.client.readyState, WebSocket.OPEN);
+    assert.deepEqual(t.client.sent.find(e => e.type === 'taskError'), {
+      type: 'taskError', turnId: 'cut', message: '這一段語音可能沒有完整收錄，尚未交給後端或更改行程；請重新說一次完整需求。'
+    });
+    assert.ok(t.upstream.sent.some(e => e.type === 'session.thinking.append' && e.delegation_id === 'cut'));
+    assert.ok(t.upstream.sent.some(e => e.type === 'session.commentary.append' && e.delegation_id === 'cut'));
+
+    t.input('大阪五天', 100, 200);
+    await t.delegate('clear', 200);
+    assert.deepEqual(received, ['大阪五天']);
+    assert.equal(t.client.sent.filter(e => e.type === 'result').at(-1).turnId, 'clear');
+  } finally { t.bridge.stop(); }
+});
 test('observed 6400-character untimed audio plays as PCM without invented server timestamps or backend work', () => {
   let calls = 0;
   const t = setup({ chat: async () => { calls++; } });
@@ -245,22 +296,29 @@ test('long backend output remains canonical on screen rather than truncated into
     assert.ok(parts.every(e => Buffer.byteLength(e.content) <= 450));
   } finally { t.bridge.stop(); }
 });
-test('superseded work and stop abort read-only tasks without early unlock or stale output', async () => {
+test('delegated turns queue independently and stop aborts read-only work without stale output', async () => {
   let release, started = 0;
+  const messages = [];
   const t = setup({ chat: async (_s, _a, _env, deps) => {
     started++;
+    messages.push(_a.message);
     if (started === 1) await new Promise(resolve => { release = resolve; });
     deps.signal.throwIfAborted();
-    return { text: '最新結果', state: { activeAgent: 'planner' } };
+    return { text: `結果：${_a.message}`, state: { activeAgent: 'planner' } };
   } });
   try {
     t.input('東京', 0, 100); await t.delegate('one', 100);
     t.input('大阪', 100, 200); await t.delegate('two', 200);
     assert.equal(started, 1); assert.equal(t.session.busy, true);
-    release(); await tick(); await tick();
-    assert.equal(started, 2);
+    assert.deepEqual(messages, ['東京']);
+    release();
+    await waitFor(() => t.client.sent.filter(e => e.type === 'result').length === 2);
+    assert.deepEqual(messages, ['東京', '大阪']);
     const results = t.client.sent.filter(e => e.type === 'result');
-    assert.equal(results.length, 1); assert.equal(results[0].turnId, 'two');
+    assert.equal(results.length, 2);
+    assert.deepEqual(results.map(e => e.turnId), ['one', 'two']);
+    assert.deepEqual(results.map(e => e.result.text), ['結果：東京', '結果：大阪']);
+    assert.ok(!t.client.sent.some(e => e.type === 'superseded'));
   } finally { t.bridge.stop(); }
   const stopped = setup({ chat: async (_s, _a, _env, deps) => {
     await new Promise(resolve => { release = resolve; }); deps.signal.throwIfAborted();
@@ -305,9 +363,12 @@ test('mode tickets are strict, unavailable mode fails before auth and one-use ro
   const post = data => fetch(`${origin}/api/voice/session`, { method: 'POST', headers: { origin, cookie, 'content-type': 'application/json' }, body: JSON.stringify(data) });
   let ws;
   try {
-    assert.deepEqual(body.voice.modes, { 'voice-live': { available: false }, 'gpt-live': { available: true },
-      'voice-realtime': { available: false, requiredModel: 'gpt-realtime-2.1', configuredModel: null },
-      'speech-direct': { available: false, sttModes: ['rest', 'sdk'] } });
+    assert.equal(body.voice.modes['gpt-live'].localeAvailability['en-US'].available, true);
+    const modes = Object.fromEntries(Object.entries(body.voice.modes).map(([mode, { localeAvailability, ...settings }]) => [mode, settings]));
+    assert.deepEqual(modes, { 'voice-live': { available: false, advancedSettings: true }, 'gpt-live': { available: true, advancedSettings: true },
+      'voice-realtime': { available: false, advancedSettings: true, requiredModel: 'gpt-realtime-2.1', configuredModel: null },
+      'speech-direct': { available: false, advancedSettings: true, sttModes: ['rest', 'sdk'] },
+      'foundry-voice-agent': { available: false, advancedSettings: false, managed: true, connectionVerified: false } });
     assert.equal((await post({ mode: 'voice-live' })).status, 503);
     assert.equal((await post({ mode: 'gpt-live', endpoint: 'https://evil.example' })).status, 400);
     assert.equal((await post({ mode: 'unknown' })).status, 400); assert.equal(authCalls, 0);

@@ -1,6 +1,26 @@
-# 梅好 Airlines：同一講稿比較四種語音架構
+# Ni Airlines：同一講稿比較四種語音架構
+
+## 英文demo add-on（v1.0.8候選，取得啟用窗口後才使用）
+
+切換到English，確認新回覆與面板為英文；切換前的歷史訊息維持原文。先停止語音再換語言，無需清除同一旅程。四種語音仍為相同路徑與交易守門，語言選擇不是自動語言偵測，也沒有新增真人音質排行。
+
+依序輸入或在支援的英文語音連線說：
+
+> Plan a five-day business trip from Taoyuan to Narita on November 12, 2026 for two adults, economy, with less walking.
+>
+> Meetings on days 2 and 3 from 09:00 to 17:00 at Tokyo Station. Day 4 afternoon visit Asakusa for shopping.
+>
+> Stay near Tokyo Station for 4 nights. The flights and accommodation budget is TWD 50000, with transport and meals separate. Arrange airport transfers.
+>
+> Search flights.
+
+核對5天／economy（business trip不是business艙）、TPE→NRT、2026-11-12、2人、少步行；會議09:00–17:00不排活動，Asakusa不改航班目的地，合計預算不套成機票獨立預算。平常語音摘要、畫面完整；`Explain day 2 in detail`只展開第2天。這四輪已作真實Foundry整合，但四模式真人聽評仍要逐條記錄，不能把有限ack當聲學測試結果。
+
+要展示交易，先停止語音，再以文字`select flight 1` → `reprice`，核對當前總額、版本、幣別與期限後才說`confirm current quote`。`confirm`、否定或附條件文字不執行同意。結帳仍是session專屬的模擬頁，不訂票、不扣款；切回繁中時同一旅程、quote與既有文字都保留。
 
 ## 示範前先說明
+
+2026-10-24補充：使用者核准後v1.0.7 queue／進階設定已整批啟用，3100為`578ae578a2f9b6f5`；重啟已清除旅程並中斷舊語音，請reload。後續真人驗收包含SDK同connection兩句EOF、Option2工具中插話、Option1無效需求後下一輪、GPT疑似片段澄清、舊segment ACK及模式獨立設定。已有SDK服務與離線回歸證據不取代四模式共同講稿或真人聽評。
 
 「這是非官方航空旅遊POC，四種語音前端都委派**同一組外部GPT-5.4四代理**。航班、價格與付款都是合成，不會扣款、訂位或開票。今天比較自然臺灣華語、意圖／欄位保留、錯誤、更正及等待時間，不預設哪個最好。」
 

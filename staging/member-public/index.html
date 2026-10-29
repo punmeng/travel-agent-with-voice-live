@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/png" href="/ni-airlines-logo.png">
+  <meta name="description" data-i18n-content="Ni Airlines 旅程規劃示範：四代理協作、合成航班與模擬票價。" content="Ni Airlines 旅程規劃示範：四代理協作、合成航班與模擬票價。">
+  <title data-i18n="Ni Airlines · AI 旅遊規劃師">Ni Airlines · AI 旅遊規劃師</title>
+  <script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+  </script>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" data-i18n-aria-label="Ni Airlines 首頁" aria-label="Ni Airlines 首頁"><img src="/ni-airlines-logo.png" alt="Ni Airlines" width="1150" height="529"></a>
+    <span class="badge" id="mode">旅遊規劃示範</span>
+    <label class="language-control" for="language"><span>繁體中文 / English</span><select id="language" aria-label="繁體中文 / English"><option value="zh-TW">繁體中文</option><option value="en-US">English</option></select></label>
+    <button id="new-trip" class="quiet" data-i18n="新旅程">新旅程</button>
+    <button id="member-login" class="quiet" data-i18n="會員登入">會員登入</button>
+    <div id="member-session" class="member-session" hidden><span id="member-name"></span><button id="member-logout" class="quiet" data-i18n="登出">登出</button></div>
+  </header>
+  <dialog id="member-dialog" aria-labelledby="member-dialog-title">
+    <form id="member-login-form" method="dialog">
+      <div class="member-dialog-heading"><h2 id="member-dialog-title" data-i18n="會員登入 · 示範帳號">會員登入 · 示範帳號</h2><button id="member-close" type="button" class="quiet" data-i18n-aria-label="關閉登入視窗" aria-label="關閉登入視窗">×</button></div>
+      <p data-i18n="使用下列虛構示範帳號；偏好僅供本次旅程參考。">使用下列虛構示範帳號；偏好僅供本次旅程參考。</p>
+      <label for="member-email" data-i18n="電子郵件">電子郵件</label><input id="member-email" type="email" autocomplete="username" maxlength="254" required>
+      <label for="member-password" data-i18n="密碼">密碼</label><input id="member-password" type="password" autocomplete="current-password" maxlength="128" required>
+      <p id="member-error" class="error" role="alert" hidden></p>
+      <button id="member-submit" class="primary" type="submit" data-i18n="登入">登入</button>
+      <details class="member-demo-accounts"><summary data-i18n="查看示範帳號">查看示範帳號</summary>
+        <ul>
+          <li><code>alex.taipei@example.test</code> · <span data-i18n="Alex · 台北 · 商務旅客">Alex · 台北 · 商務旅客</span></li>
+          <li><code>tomo.tokyo@example.test</code> · <span data-i18n="Tomo · 東京 · 家庭旅客">Tomo · 東京 · 家庭旅客</span></li>
+          <li><code>ohsung.seoul@example.test</code> · <span data-i18n="Ohsung · 首爾 · 精打細算">Ohsung · 首爾 · 精打細算</span></li>
+          <li><code>adam.sydney@example.test</code> · <span data-i18n="Adam · 雪梨 · 高端旅客">Adam · 雪梨 · 高端旅客</span></li>
+          <li><code>felix.singapore@example.test</code> · <span data-i18n="Felix · 新加坡 · 商務旅客">Felix · 新加坡 · 商務旅客</span></li>
+        </ul>
+        <p><span data-i18n="所有帳號共用示範密碼：">所有帳號共用示範密碼：</span><code>MeihaoDemo!2026</code></p>
+        <p data-i18n="示範帳號沒有真實會員禮遇、公司核准、訂位或付款權限。">示範帳號沒有真實會員禮遇、公司核准、訂位或付款權限。</p>
+      </details>
+    </form>
+  </dialog>
+  <main class="layout">
+    <section class="conversation" data-i18n-aria-label="旅程對話" aria-label="旅程對話">
+      <p class="notice" data-i18n="非官方示範 · 航班／票價皆合成，不訂位、不收款。">非官方示範 · 航班／票價皆合成，不訂位、不收款。</p>
+      <div class="conversation-tools">
+        <button id="conversation-expand" aria-pressed="false">放大對話寬度</button>
+      </div>
+      <div id="messages" class="messages" role="log" aria-live="polite" data-i18n-aria-label="對話訊息" aria-label="對話訊息">
+        <article class="message assistant"><div><p class="speaker" data-i18n="旅程助手">旅程助手</p><p data-i18n="想去哪裡走走？還沒決定也可以一起聊。請勿提供護照或信用卡資料。">想去哪裡走走？還沒決定也可以一起聊。請勿提供護照或信用卡資料。</p></div></article>
+      </div>
+      <div id="busy" class="busy" role="status" hidden>旅程團隊正在整理您的提案…</div>
+      <div id="error" class="error" role="alert" hidden><span></span><button id="retry" data-i18n="重試">重試</button></div>
+      <div class="composer-area">
+        <section id="voice-dialog" aria-labelledby="voice-title" hidden>
+          <h3 id="voice-title" class="sr-only">Azure Voice Live</h3>
+          <label class="voice-mode-label" for="voice-mode" data-i18n="語音模式（停止後可切換）">語音模式（停止後可切換）</label>
+          <select id="voice-mode" aria-describedby="voice-availability">
+            <option value="voice-live">1 · Voice Live · GPT-5.4 + 既有聲音</option>
+            <option value="voice-realtime" data-i18n="2 · Voice Live · gpt-realtime-2.1 + Azure Neural聲音">2 · Voice Live · gpt-realtime-2.1 + Azure Neural聲音</option>
+            <option value="gpt-live" data-i18n="3 · GPT-Live · gpt-live-1 + 內建聲音">3 · GPT-Live · gpt-live-1 + 內建聲音</option>
+            <option value="speech-direct" data-i18n="4 · 直接Azure Speech · STT → 四代理 → Personal Voice">4 · 直接Azure Speech · STT → 四代理 → Personal Voice</option>
+            <option value="foundry-voice-agent" data-i18n="5 · Foundry 託管語音代理 · 麥克風 → 代理 → 語音" hidden>5 · Foundry 託管語音代理 · 麥克風 → 代理 → 語音</option>
+          </select>
+          <p id="voice-availability" role="status" aria-live="polite" hidden></p>
+          <p id="voice-status" role="status" aria-live="polite">尚未收音</p>
+          <div class="voice-controls"><button id="voice-start" class="primary" data-i18n="開始語音">開始語音</button><button id="voice-finish" hidden disabled data-i18n="提早送出（可選；停頓自動送出）">提早送出（可選；停頓自動送出）</button><button id="voice-mute" disabled aria-pressed="false">靜音</button><button id="voice-stop" disabled data-i18n="停止語音">停止語音</button><button id="close-voice" data-i18n="關閉，繼續文字規劃">關閉，繼續文字規劃</button></div>
+          <p id="voice-caption" class="muted" hidden></p>
+          <p id="voice-input-notice" class="muted">開始即同意使用麥克風及雲端語音處理（可能計費）。</p>
+          <details id="voice-error" hidden><summary data-i18n="診斷資訊">診斷資訊</summary><p id="voice-error-details"></p></details>
+          <details class="voice-settings"><summary data-i18n="語音設定與說明">語音設定與說明</summary>
+          <div class="voice-panel-details">
+          <div class="voice-heading"><label for="voice-panel-height"><span data-i18n="面板高度 ">面板高度 </span><input id="voice-panel-height" type="range" min="160" max="440" step="20" value="260" data-i18n-aria-label="語音面板高度" aria-label="語音面板高度"></label></div>
+          <fieldset id="speech-options" hidden>
+            <legend data-i18n="語音辨識設定">語音辨識設定</legend>
+            <label for="speech-stt"><span data-i18n="辨識方式">辨識方式</span>
+              <select id="speech-stt"><option value="rest" data-i18n="A · REST API（停頓自動送出）">A · REST API（停頓自動送出）</option><option value="sdk" data-i18n="B · Speech SDK（連續串流辨識）">B · Speech SDK（連續串流辨識）</option></select>
+            </label>
+            <div id="speech-sdk-options" hidden>
+              <label for="speech-source"><span data-i18n="串流來源 ">串流來源 </span><select id="speech-source"><option value="microphone" data-i18n="即時麥克風（16 kHz）">即時麥克風（16 kHz）</option><option value="wav" data-i18n="本機WAV即時速率重播（8／16 kHz）">本機WAV即時速率重播（8／16 kHz）</option></select></label>
+              <details><summary data-i18n="進階辨識設定">進階辨識設定</summary>
+              <label for="speech-silence"><span data-i18n="停頓時間 ">停頓時間 </span><select id="speech-silence"><option value="700">700 ms</option><option value="1000">1000 ms</option></select></label>
+              <label for="speech-chunk"><span data-i18n="音訊區塊大小（bytes） ">音訊區塊大小（bytes） </span><input id="speech-chunk" type="number" min="320" max="6400" step="2" value="1280"></label>
+              <label for="speech-phrases"><span data-i18n="辨識提示詞（選填，每行一詞，最多100詞）">辨識提示詞（選填，每行一詞，最多100詞）</span><textarea id="speech-phrases" rows="2" maxlength="10100"></textarea></label>
+              </details>
+              <label id="speech-wav-label" for="speech-wav" hidden><span data-i18n="PCM16、單聲道WAV（8／16 kHz，最多120秒）">PCM16、單聲道WAV（8／16 kHz，最多120秒）</span><input id="speech-wav" type="file" accept=".wav,audio/wav"></label>
+              <p data-i18n="等待回覆與朗讀時暫停收音或檔案重播。">等待回覆與朗讀時暫停收音或檔案重播。</p>
+            </div>
+          </fieldset>
+          <section id="speech-asr" hidden data-i18n-aria-label="SDK串流辨識事件" aria-label="SDK串流辨識事件">
+            <p id="speech-replay-progress"></p><p id="speech-interim" role="status" aria-live="polite"></p>
+            <details open><summary data-i18n="辨識結果">辨識結果</summary><ol id="speech-finals" aria-live="polite"></ol></details>
+            <details><summary data-i18n="串流紀錄">串流紀錄</summary><ol id="speech-events" aria-live="polite"></ol></details>
+          </section>
+          <details class="muted" hidden><summary data-i18n="回應時間">回應時間</summary><p id="voice-metrics"></p></details>
+          <details class="muted"><summary data-i18n="語音與模擬資料說明">語音與模擬資料說明</summary><p id="voice-message"></p><p data-i18n="請先讀完報價再確認；不收款、不訂位、不開票。">請先讀完報價再確認；不收款、不訂位、不開票。</p></details>
+          </div>
+          </details>
+        </section>
+        <form id="chat-form" class="composer"><label class="sr-only" for="message" data-i18n="傳送訊息">傳送訊息</label><textarea id="message" rows="1" maxlength="2000" data-i18n-placeholder="聊聊旅行想法…" placeholder="聊聊旅行想法…" required></textarea><button type="submit" id="send" data-i18n-aria-label="傳送訊息" aria-label="傳送訊息">↑</button></form>
+        <div class="composer-foot"><button id="voice" class="voice"><span data-i18n="◉ 語音對話 ">◉ 語音對話 </span><span>選擇語音模式</span></button><small data-i18n="Enter 傳送 · Shift + Enter 換行">Enter 傳送 · Shift + Enter 換行</small></div>
+      </div>
+      <footer class="app-footer" data-i18n-aria-label="應用程式版本與製作團隊" aria-label="應用程式版本與製作團隊"><span id="app-version" hidden></span><span>Powered by Microsoft Innovation Taipei</span></footer>
+    </section>
+    <aside class="context-panel" data-i18n-aria-label="代理與本次對話脈絡" aria-label="代理與本次對話脈絡">
+      <div class="context-agent"><span data-i18n="目前代理：">目前代理：</span><span id="voice-agent" class="agent-badge" role="status" aria-live="polite" aria-atomic="true">等待對話</span></div>
+      <section id="member-profile" class="member-profile" aria-labelledby="member-preferences-title" hidden>
+        <h3 id="member-preferences-title" data-i18n="會員偏好">會員偏好</h3>
+        <p id="member-profile-name"></p>
+        <ul id="member-preferences"></ul>
+        <p id="member-cabin-default"></p>
+        <p class="profile-home"><span id="member-home-city"></span><br><span data-i18n="個人檔案城市 · 確認後才作出發地">個人檔案城市 · 確認後才作出發地</span></p>
+        <p class="profile-source" data-i18n="示範個人檔案 · 非從過往對話學得">示範個人檔案 · 非從過往對話學得</p>
+        <p class="profile-source" data-i18n="本趟明確選擇優先">本趟明確選擇優先</p>
+      </section>
+      <details id="session-context">
+        <summary data-i18n="本次旅程">本次旅程</summary>
+        <p class="memory-notice" data-i18n="長期記憶尚未啟用">長期記憶尚未啟用</p>
+        <section id="origin-suggestion" hidden aria-labelledby="origin-suggestion-title">
+          <strong id="origin-suggestion-title" data-i18n="建議出發城市 · 待確認">建議出發城市 · 待確認</strong>
+          <p id="origin-city"></p>
+          <button id="origin-confirm" data-i18n="確認出發城市">確認出發城市</button>
+          <button id="origin-change" data-i18n="更改出發城市">更改出發城市</button>
+          <p class="muted" data-i18n="未確認前不作航班搜尋條件；多機場城市仍會詢問機場偏好。">未確認前不作航班搜尋條件；多機場城市仍會詢問機場偏好。</p>
+        </section>
+        <dl id="session-facts"></dl>
+        <p class="muted" data-i18n="僅顯示本次旅程資料與會員偏好，不會跨旅程保存對話記憶。">僅顯示本次旅程資料與會員偏好，不會跨旅程保存對話記憶。</p>
+      </details>
+    </aside>
+  </main>
+</body>
+</html>

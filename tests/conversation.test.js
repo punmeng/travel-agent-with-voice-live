@@ -48,7 +48,8 @@ test('chat gathers trip fields incrementally without business selection controls
   assert.match(r.text, /第 1 天/); assert.equal(s.trip.budget, 30000);
   await say(s, '改成 3 人，商務艙，不限制步行');
   assert.equal(s.trip.travelers, 3); assert.equal(s.trip.cabin, 'business'); assert.equal(s.trip.lowWalking, false);
-  await assert.rejects(say(s, '改成 7 人'), { name: 'ZodError' });
+  await assert.rejects(say(s, '改成 7 人'), { code: 'TRIP_INPUT', stage: 'journey.trip' });
+  assert.equal(s.trip.travelers, 3, 'rejected update never partially changes the confirmed trip');
   r = await say(s, '去火星'); assert.match(r.text, /哪個城市/);
   assert.equal(s.trip, null); assert.equal(s.toolUnits, 0);
   r = await say(s, '11/12 出發'); assert.equal(s.draft.date, undefined);

@@ -1,8 +1,25 @@
-# 四種語音架構：客戶比較與驗收
+# Ni Airlines：四種已啟用語音架構與Foundry候選管線
 
-更新2026-10-24。**目前沒有本次四模式同條件live分數、延遲排行或費用結論。** 本指南定義比較方法，不把官方能力、原始碼存在、私人設定、離線mock成功與真人聲學成功混為一談。目前3100已啟用v1.0.6，模式2使用核准的`gpt-realtime-2.1`，模式4 REST／SDK配置可用；有限真實服務測試不等於共同講稿／真人聲學驗收。GPT截句及SDK漏第二句仍未解決，其他已知問題見版本交接。不能為補結果自行呼叫雲端。
+## 英文add-on：v1.0.8，3100已啟用
 
-詳細設定／官方來源見[Foundry指南](FOUNDRY.md#四種語音架構)，狀態見[版本交接](CURRENT-VERSION.md)；所有模式照[同一講稿](DEMO-SCRIPT.md)執行，主場景一律唯讀。
+候選版提供同一session的繁中／英文切換，停止語音後才能切；voice ticket固定`zh-TW`或`en-US`，不得中途改語言。既有中文預設及所有排隊／插話／ACK／交易限額保留。下列是2026-10-27有限英文服務驗證；下方固定zh-TW表格仍描述原中文模式。
+
+| 路徑 | 英文接線 | 有限真實證據 | 尚未驗收 |
+|---|---|---|---|
+| 1 Voice Live | Azure Speech `en-US`；既有個人化男／女聲，不更換資產 | 同一句合成文字取得男聲101,792／女聲103,840 bytes PCM | 真人麥克風、英文口音／相似度、全程插話 |
+| 2 原生Realtime | 英文有限instructions；locale專屬Azure標準`en-US-AvaNeural`，中文仍原配置聲音；不新增STT參數 | 官方Speech聲音表核對＋實際session ACK核對type／name | 原生英文對話、音訊生成與真人聽評 |
+| 3 GPT-Live | 英文有限instructions、已核驗`marin`；不新增聲音選單／VAD／phrase | 實際English session ACK | 原生英文對話、音訊生成與真人聽評 |
+| 4 REST／SDK | REST language、SDK recognition language及SSML `xml:lang`均`en-US`；原男聲profile不變 | 原profile SSML100,768 bytes；同一合成英文REST辨識成功、SDK 1 final | 真人麥克風、多句英文EOF／噪音與半雙工聲學效果 |
+
+四模式介面、字幕標籤、進階設定、錯誤及回覆語言一併切換；SDK timing／chunk語意不變。語言選擇不是自動語言偵測；不放任意system prompt、voice ID或全域.env控制。模式2／3仍可改述，畫面權威資料與交易守門不變。有限證據在忽略的`.foundry\english-voice-proof.json`；沒有以假transport當實際服務通過，也沒有形成音質／延遲／費用排行。第五候選另有本機雙語instructions與per-ticket voice／transcription locale。
+
+更新2026-10-28。3100 health已回報v1.0.8／`111621bc136e5766`，原四種模式及雙語UI已啟用；**目前沒有四模式同條件live分數、延遲排行或費用結論。** SDK漏第二句已定位resultId重用並有兩final／兩backend／TTS真實服務證據，播放為計時ACK；GPT只保守澄清可見邊界異常，無法保證偵測所有截句。官方能力、source、配置、離線mock、有限服務測試與真人聲學驗收須分開；詳見版本交接。第五Foundry Voice Agent只是本機候選，未建立、配置或啟用；不能為補結果自行呼叫雲端。
+
+## 候選第五管線：managed Foundry Voice Agent
+
+這不是第五個業務agent。Managed voice agent只呼叫一個strict `travel_backend({message})`，由Node server核對相同音訊item的最終轉錄後，才進入現有旅程chat／四業務agent及服務端工具。航班與票價仍為合成資料，voice transaction仍拒絕；不直接授予Voice Agent既有search／quote／reprice函式。待最終轉錄或兩種文字不一致時要求重說；該檢查無法偵測兩者同時漏字，真人語音／雲端連線仍未驗證。設定及建立安全條件見[Foundry指南](FOUNDRY.md#候選第五語音管線-foundry-voice-agent)。
+
+詳細設定／官方來源見[Foundry指南](FOUNDRY.md#四種已啟用語音架構)，狀態見[版本交接](CURRENT-VERSION.md)；所有模式照[同一講稿](DEMO-SCRIPT.md)執行，主場景一律唯讀。
 
 ## 不是四種聲音，而是四種路徑
 
@@ -34,7 +51,9 @@
 
 所有模式都要求browser `noiseSuppression`／`echoCancellation`，不是一定生效的聲學處理，也不代表四者有相同服務端降噪。不要把產品標籤「native」「full-duplex」直接當成這個app在噪音、更正或工具中斷上的通過證據。
 
-Option2上述插話來源守門通過45/45項voice Node測試，保留audio／call ID去重、無效工具及交易拒絕；待辦超量明確回`VOICE_PENDING_LIMIT`，取消等待20秒逾時回`VOICE_REALTIME_TIMEOUT`，包含遲到response的取消序列。尚未重啟3100（仍v1.0.6／`b451311c607461c4`），不得列為live通過。SDK 11:33截圖至少有一個final，既有stdout無SDK error但缺phase traces；額外零PCM／final→agent→播放resume離線測試不代表正式SDK或VAD已修復，現象仍待定位。
+Option2來源守門保留audio／call ID去重、無效工具及交易拒絕；待辦超量回`VOICE_PENDING_LIMIT`，取消等待20秒逾時回`VOICE_REALTIME_TIMEOUT`，涵蓋遲到response。未啟用或完成真人插話驗收。SDK 11:33截圖至少有一個final，但當時log沒有resultId，不可斷言唯一歷史根因；新的兩句真實服務證據詳見版本交接。
+
+v1.0.7候選進階設定：Option1／2支援VAD silence、server noise／AEC，只有Option1有Azure Speech phrase；GPT僅有限instructions presets及已核實marin；REST僅本機VAD；SDK分段／phrase／chunk ms。預設及單次票券規則見README。A/B需記錄實際選擇；session ack不等於降噪或口音驗收，不把chunk當VAD。
 
 ## 共同場景與客觀答案
 
@@ -62,7 +81,7 @@ Option2上述插話來源守門通過45/45項voice Node測試，保留audio／ca
 5. 每模式每條件至少5次完整重複；正式p95建議增加至至少20個有效同條件樣本並公開n／估計方法。暖機與首次連線分開記、順序輪替、同資料／四代理版本；不用不受控回音或旁人個資作素材。
 6. Direct Speech A REST按開始後先安靜300ms校準；說話停頓1秒自動送出。B SDK使用700／1000ms切段，不套用REST校準／VAD參數。兩者正常等排程PCM播完才恢復收音。另測短聲響、600ms自然停頓、穩定／突變噪音；聲學切段非語意判斷，誤觸／漏觸都記錄。若用手動備援或停止重開，記額外操作；不把未收錄的插話算辨識錯誤，也不隱藏半雙工等待成本。
 
-模式1phrase-list能力若要單獨A/B，先另核准可用接線與相同詞表，標示「有／無配置」及其他條件不變；測試詞可固定為「桃園、成田、梅好 Airlines、DEMO101、DEMO0101、TPE、NRT」，這是評測詞表，**不是宣稱已注入服務或所有詞都適合官方phrase_list格式**。不得偷偷調一模式詞表然後稱公平預設比較。模式4 A不能用不支援的REST參數模擬此能力；B SDK可另做相同詞表的有／無配置比較，不能把結果歸給REST。
+模式1phrase-list能力若要單獨A/B，先另核准可用接線與相同詞表，標示「有／無配置」及其他條件不變；測試詞可固定為「桃園、成田、Ni Airlines、DEMO101、DEMO0101、TPE、NRT」，這是評測詞表，**不是宣稱已注入服務或所有詞都適合官方phrase_list格式**。不得偷偷調一模式詞表然後稱公平預設比較。模式4 A不能用不支援的REST參數模擬此能力；B SDK可另做相同詞表的有／無配置比較，不能把結果歸給REST。
 
 ### 客觀評分
 

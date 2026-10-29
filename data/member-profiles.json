@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "mock": true,
+    "source": "Fictional local demonstration profiles; no real customer data.",
+    "usage": "The home city may prefill a pending departure suggestion. Explicit confirmation is required before use, and multi-airport cities still require an airport choice."
+  },
+  "members": [
+    {
+      "id": "alex-taipei",
+      "email": "alex.taipei@example.test",
+      "displayName": "Alex",
+      "homeCity": "Taipei",
+      "personaId": "business"
+    },
+    {
+      "id": "tomo-tokyo",
+      "email": "tomo.tokyo@example.test",
+      "displayName": "Tomo",
+      "homeCity": "Tokyo",
+      "personaId": "family"
+    },
+    {
+      "id": "ohsung-seoul",
+      "email": "ohsung.seoul@example.test",
+      "displayName": "Ohsung",
+      "homeCity": "Seoul",
+      "personaId": "value"
+    },
+    {
+      "id": "adam-sydney",
+      "email": "adam.sydney@example.test",
+      "displayName": "Adam",
+      "homeCity": "Sydney",
+      "personaId": "premium"
+    },
+    {
+      "id": "felix-singapore",
+      "email": "felix.singapore@example.test",
+      "displayName": "Felix",
+      "homeCity": "Singapore",
+      "personaId": "business",
+      "corporatePolicyId": "demo-business-travel"
+    }
+  ]
+}

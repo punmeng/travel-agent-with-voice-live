@@ -99,7 +99,8 @@ test('HTTP chat-only selection/reprice/confirmation, isolation and explicit erro
     assert.deepEqual([...speechOptions.matchAll(/<select id="([^"]+)"/g)].map(match => match[1]),
       ['speech-stt', 'speech-source', 'speech-silence']);
     const chatOnlyPage = page.replace(speechOptions, '');
-    assert.equal((chatOnlyPage.match(/<select\b/g) ?? []).length, 1, 'only voice settings may add selectors');
+    assert.deepEqual([...chatOnlyPage.matchAll(/<select id="([^"]+)"/g)].map(match => match[1]),
+      ['language', 'voice-mode'], 'only the existing language and voice settings may add selectors');
     assert.match(page, /<select id="voice-mode"/);
     assert.doesNotMatch(chatOnlyPage.replace(/<select\b[^>]*>[\s\S]*?<\/select>/g, ''), /<select|type="checkbox"|data-prompt|id="purchase"|class="card/);
   } finally { await new Promise(resolve => server.close(resolve)); }

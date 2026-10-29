@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { candidateAssets } from './candidate-assets.js';
 
 async function playbackPage(page, mode, personalVoice = false) {
+  await candidateAssets(page);
   await page.route('**/api/bootstrap', async route => {
     const response = await route.fetch(), body = await response.json();
     body.voice = { available: true, modes: Object.fromEntries(
-      ['voice-live', 'voice-realtime', 'gpt-live', 'speech-direct'].map(name => [name, {
+      ['voice-live', 'voice-realtime', 'gpt-live', 'speech-direct', 'foundry-voice-agent'].map(name => [name, {
         available: true, requiredModel: 'gpt-realtime-2.1', configuredModel: 'gpt-realtime-2.1', sttModes: ['rest', 'sdk']
       }])) };
     if (personalVoice) Object.assign(body.voice, {
@@ -40,10 +42,13 @@ async function playbackPage(page, mode, personalVoice = false) {
       return window.__context.createMediaStreamDestination().stream;
     };
     window.WebSocket = class {
-      static OPEN = 1; readyState = 1; bufferedAmount = 0; controls = []; binarySent = 0;
+      static OPEN = 1; readyState = 1; bufferedAmount = 0; controls = []; binarySent = 0; binaryBytes = 0;
       constructor() { window.__socket = this; setTimeout(() => this.receive({ type: 'ready' }), 20); }
       receive(data) { this.onmessage?.({ data: JSON.stringify(data) }); }
-      send(data) { if (typeof data === 'string') this.controls.push(JSON.parse(data)); else this.binarySent++; }
+      send(data) {
+        if (typeof data === 'string') this.controls.push(JSON.parse(data));
+        else { this.binarySent++; this.binaryBytes += data.byteLength; }
+      }
       close() { this.readyState = 3; this.onclose?.(); }
     };
     window.__advance = time => {
@@ -273,19 +278,24 @@ test('Option1 bounds fresh timestamp bursts by wall clock even when audio time i
   }
 });
 
+for (const mode of ['voice-live', 'foundry-voice-agent']) {
 for (const confirmed of [false, true]) {
-  test(`Option1 delayed transport ${confirmed ? 'caps unacknowledged input' : 'reproduces legacy arrival burst despite empty browser buffer'}`, async ({ page }) => {
-    await playbackPage(page, 'voice-live');
+  test(`${mode} delayed transport ${confirmed ? 'caps unacknowledged input' : 'reproduces legacy arrival burst despite empty browser buffer'}`, async ({ page }) => {
+    await playbackPage(page, mode);
     await page.clock.install();
     await page.evaluate(confirmed => {
       window.__captureReceive = window.__processor.port.onmessage;
       window.__processor.port.onmessage = null;
       window.__time = 10;
-      if (confirmed) window.__socket.receive({ type: 'ready', inputFlow: { maxUnackedBytes: 12288 } });
+      if (confirmed) {
+        window.__socket.receive({ type: 'ready', inputFlow: { maxUnackedBytes: 12288 } });
+        window.__socket.receive({ type: 'inputAudioAck', receivedBytes: window.__socket.binaryBytes });
+      }
       window.__beforeCapture = window.__socket.binarySent;
+      window.__beforeCaptureBytes = window.__socket.binaryBytes;
     }, confirmed);
-    // OS/network accepts sends (bufferedAmount=0) but delivers none for three seconds.
-    for (let i = 0; i < 36; i++) {
+    // Legacy bursts after three seconds; negotiated credit recovers before ACK timeout.
+    for (let i = 0; i < (confirmed ? 18 : 36); i++) {
       await page.clock.fastForward(86);
       await page.evaluate(() => window.__captureReceive({ data: { audio: new ArrayBuffer(4096), capturedAt: 10 } }));
     }
@@ -297,7 +307,7 @@ for (const confirmed of [false, true]) {
     expect(delayed).toBe(12288);
     expect(await page.evaluate(() => window.__socket.bufferedAmount)).toBe(0);
     await expect(page.locator('#voice-status')).toContainText('已略過積壓音訊');
-    await page.evaluate(() => window.__socket.receive({ type: 'inputAudioAck', receivedBytes: 12288 }));
+    await page.evaluate(() => window.__socket.receive({ type: 'inputAudioAck', receivedBytes: window.__beforeCaptureBytes + 12288 }));
     await page.clock.fastForward(86);
     await page.evaluate(() => window.__captureReceive({ data: { audio: new ArrayBuffer(4096), capturedAt: 10 } }));
     expect(await page.evaluate(() => (window.__socket.binarySent - window.__beforeCapture) * 4096)).toBe(16384);
@@ -306,8 +316,8 @@ for (const confirmed of [false, true]) {
   });
 }
 
-test('Option1 rejects invalid input acknowledgements', async ({ page }) => {
-  await playbackPage(page, 'voice-live');
+test(`${mode} rejects invalid input acknowledgements`, async ({ page }) => {
+  await playbackPage(page, mode);
   await page.evaluate(() => {
     window.__processor.port.onmessage = null;
     window.__socket.receive({ type: 'ready', inputFlow: { maxUnackedBytes: 12288 } });
@@ -315,4 +325,47 @@ test('Option1 rejects invalid input acknowledgements', async ({ page }) => {
   });
   await expect(page.locator('#voice-status')).toContainText('收音傳輸確認無效');
   expect(await page.evaluate(() => window.__socket.readyState)).toBe(3);
+});
+
+test(`${mode} missing input ACK terminates explicitly instead of remaining in a capture-credit deadlock`, async ({ page }) => {
+  await playbackPage(page, mode);
+  await page.clock.install();
+  await page.evaluate(() => {
+    window.__captureReceive = window.__processor.port.onmessage;
+    window.__processor.port.onmessage = null;
+    window.__time = 10;
+    window.__socket.receive({ type: 'ready', inputFlow: { maxUnackedBytes: 12288 } });
+    for (let i = 0; i < 3; i++) window.__captureReceive({ data: { audio: new ArrayBuffer(4096), capturedAt: 10 } });
+  });
+  await page.clock.fastForward(2100);
+  await page.evaluate(() => window.__captureReceive({ data: { audio: new ArrayBuffer(4096), capturedAt: 10 } }));
+  await expect(page.locator('#voice-error-details')).toHaveText('VOICE_INPUT_ACK_TIMEOUT');
+  expect(await page.evaluate(() => window.__socket.readyState)).toBe(3);
+});
+}
+
+test('old, duplicate and future segment events cannot replace the current segment ACK timer', async ({ page }) => {
+  await playbackPage(page, 'voice-live');
+  await page.clock.install();
+  await page.evaluate(async () => {
+    const state = (await (await fetch('/api/bootstrap')).json()).state;
+    window.__socket.receive({ type: 'transcript', turnId: 'current', text: '完整回答' });
+    window.__socket.receive({ type: 'result', turnId: 'current', result: { text: '回答', state } });
+    window.__socket.receive({ type: 'audio', audio: window.__audio });
+    window.__socket.receive({ type: 'audioSegmentDone', turnId: 'current', segment: 0 });
+    window.__advance(1);
+  });
+  await page.clock.fastForward(1040);
+  await page.evaluate(() => {
+    window.__socket.receive({ type: 'audio', audio: window.__audio });
+    window.__socket.receive({ type: 'audioSegmentDone', turnId: 'current', segment: 1 });
+    window.__socket.receive({ type: 'audioSegmentDone', turnId: 'current', segment: 0 });
+    window.__socket.receive({ type: 'audioSegmentDone', turnId: 'stale', segment: 1 });
+    window.__socket.receive({ type: 'audioSegmentDone', turnId: 'current', segment: 3 });
+    window.__advance(2);
+  });
+  await page.clock.fastForward(1040);
+  expect(await page.evaluate(() => window.__socket.controls.filter(event => event.type === 'segmentPlayed')))
+    .toEqual([{ type: 'segmentPlayed', turnId: 'current', segment: 0 }, { type: 'segmentPlayed', turnId: 'current', segment: 1 }]);
+  await page.locator('#voice-stop').click();
 });

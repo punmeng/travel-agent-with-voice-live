@@ -32,7 +32,7 @@ test(`direct Speech ${trigger} finish; half-duplex pauses uploads until playback
   });
   await page.goto('/'); await expect(page.locator('#send')).toBeEnabled();
   await page.locator('#voice').click();
-  expect(await page.locator('#voice-mode option').evaluateAll(options => options.map(option => option.value))).toEqual([
+  expect(await page.locator('#voice-mode option:not([hidden])').evaluateAll(options => options.map(option => option.value))).toEqual([
     'voice-live', 'voice-realtime', 'gpt-live', 'speech-direct'
   ]);
   await page.locator('#voice-mode').selectOption('speech-direct');

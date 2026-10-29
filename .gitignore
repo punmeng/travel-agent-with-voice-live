@@ -19,3 +19,6 @@ recordings/
 *.key
 # Generated snapshots: only the current manifest's explicitly staged files ship.
 data/knowledge/*.txt
+# Local release mappings, cloud evidence and diagnostic artifacts are not source.
+/staging/*
+!/staging/member-public/

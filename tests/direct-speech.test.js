@@ -162,6 +162,36 @@ test('SDK final cannot execute transactions, and excessive queued finals fail ex
     } finally { release?.(); t.bridge.stop(); await settle(); }
   }
 });
+test('Direct Speech ignores premature and wrong-turn resume but honors synchronous completion resume after lock release', async () => {
+  let release;
+  const t = setup({ chat: async () => {
+    await new Promise(resolve => { release = resolve; });
+    return { text: '完成。', state: { offers: [] } };
+  } });
+  try {
+    t.client.audio(); t.client.event({ type: 'finish' }); await settle();
+    t.client.event({ type: 'resume' }); release(); await settle();
+    const first = t.client.sent.find(event => event.type === 'audioDone');
+    assert.ok(first);
+    const before = t.requests.length;
+    t.client.event({ type: 'resume', turnId: 'wrong-turn' }); t.client.audio(); await settle();
+    assert.equal(t.requests.length, before);
+    t.client.event({ type: 'resume', turnId: first.turnId });
+    t.client.audio(); t.client.event({ type: 'finish' }); await settle();
+    assert.equal(t.requests.length, before + 1, 'valid resume allows exactly the next STT request');
+    const send = t.client.send.bind(t.client);
+    t.client.send = value => {
+      send(value);
+      const event = JSON.parse(value);
+      if (event.type === 'audioDone') t.client.event({ type: 'resume', turnId: event.turnId });
+    };
+    release(); await settle();
+    assert.equal(t.session.busy, false);
+    const complete = t.requests.length;
+    t.client.audio(); t.client.event({ type: 'finish' }); await settle();
+    assert.equal(t.requests.length, complete + 1, 'synchronous ACK cannot deadlock finally lock release');
+  } finally { release?.(); t.bridge.stop(); await settle(); }
+});
 test('SDK microphone forwards trailing zero PCM, delegates only recognized finals and accepts the next utterance after playback resume', async () => {
   const mock = mockSpeechSdk(), messages = [];
   const t = setup({

@@ -5,7 +5,7 @@ import { foundryConfig } from '../lib/foundry.js';
 import { chat } from '../lib/agents.js';
 import { createSession } from '../lib/core.js';
 import { applyUnderstanding, resolveDate } from '../lib/conversation.js';
-import { planningLead, projectContext, planningUpdates, savedPlan } from '../lib/journey.js';
+import { planningLead, projectContext, planningUpdates, savedPlan, turnWork } from '../lib/journey.js';
 import { readAll } from './reply-helper.js';
 
 const env = { APP_MODE: 'mock' };
@@ -17,6 +17,18 @@ export const demo = [
   '請簡短整理五天行程、建議住宿區域和預算分配，最後列出還需要我確認的資料。先不要訂票。'
 ];
 const say = async (s, message) => readAll(s, await chat(s, { message, requestId: randomUUID() }, env, { now }));
+test('unsupported planning numbers and overnight meetings reject the update atomically rather than leaking ZodError', async () => {
+  const s = createSession();
+  await say(s, '東京出差五天');
+  const before = structuredClone({ draft: s.draft, discovery: s.discovery, version: s.contextVersion });
+  for (const message of ['第十五天上午九點到下午五點在東京車站開會', '第2天晚上九點到上午五點在東京車站開會', '住宿四十晚']) {
+    await assert.rejects(chat(s, { message }, env, { now }), error =>
+      error.code === 'PLANNING_INPUT' && error.stage === 'journey.planning' && error.cause.issues.length > 0);
+    assert.deepEqual({ draft: s.draft, discovery: s.discovery, version: s.contextVersion }, before);
+  }
+  await say(s, '第二天上午九點到下午五點在東京車站開會');
+  assert.equal(s.discovery.planning.meetings[0].day, 2);
+});
 test('airport transfer advice never substitutes Tokyo/Narita for another confirmed airport', () => {
   for (const [destination, city] of [['KIX', '大阪'], ['HND', '東京'], ['NRT', '東京']]) {
     const s = createSession();
@@ -369,4 +381,21 @@ test('a delayed intent proposal cannot overwrite a newer context version', async
     }
   }), { code: 'STALE_JOURNEY' });
   assert.equal(s.discovery.destinationCity, null);
+});
+test('explicit flight-only search survives dates and airport names beyond the short phrase window', () => {
+  const message = '請搜尋2026年11月12日從臺灣桃園機場TPE到東京成田機場NRT的單程航班，一位成人，經濟艙，固定日期。';
+  assert.equal(turnWork(message).search, true);
+  assert.equal(turnWork('Please search November 12, 2026 from Taiwan Taoyuan airport TPE to Tokyo Narita airport NRT for one-way flights, one adult, economy, fixed date.').search, true);
+  for (const prefix of ['不要', '先不', '暫停', '停止', '取消']) {
+    assert.equal(turnWork(`${prefix}${message}`).search, false);
+  }
+  assert.equal(turnWork('請搜尋東京車站附近交通方便的飯店並規劃五天行程與機場接駁，航班之後再說').search, false);
+  for (const text of [
+    'Please do not search November 12, 2026 from Taiwan Taoyuan airport to Tokyo Narita airport flights.',
+    '請搜尋2026年11月12日臺灣桃園到東京成田的合成航班價格是多少？',
+    'How much are November 12, 2026 flights from Taiwan Taoyuan to Tokyo Narita?',
+    '請規劃2026年11月12日桃園到成田的行程，航班之後再查',
+    '第二天會議改成下午兩點，不改航班',
+    '請整理目前行程與航班摘要'
+  ]) assert.equal(turnWork(text).search, false, text);
 });

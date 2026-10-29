@@ -1,10 +1,13 @@
+import { t } from './i18n.js';
+
 const roles = { intent: '意圖協調', planner: '旅遊規劃', flight: '航班查詢', price: '票價與購買' };
 
 export function createAgentStatus(element) {
   let current = null;
   function render(role, status) {
-    element.textContent = role ? `${roles[role]} · ${status === 'completed' ? '已完成' : '處理中'}` : '等待對話';
-    element.title = role ? `${roles[role]}專員` : '等待開始對話';
+    element.textContent = role ? `${t(roles[role])} · ${t(status === 'completed' ? '已完成' : '處理中')}` : t('等待對話');
+    element.title = role ? `${t(roles[role])}${t('專員')}` : t('等待開始對話');
+    if (status === 'unavailable') element.textContent = t('代理狀態暫時無法取得');
     element.dataset.status = status;
     element.dataset.role = role ?? '';
   }
@@ -12,6 +15,7 @@ export function createAgentStatus(element) {
   clear();
   return {
     clear,
+    refresh() { render(element.dataset.role || null, element.dataset.status); },
     start(id) { current = id; render(null, 'idle'); },
     update(id, role, status = 'processing') {
       if (current !== id || !current || !Object.hasOwn(roles, role) || !['processing', 'completed'].includes(status)) return;
@@ -20,7 +24,7 @@ export function createAgentStatus(element) {
     },
     unavailable(id) {
       if (id === current && element.dataset.status !== 'completed') {
-        render(null, 'unavailable'); element.textContent = '代理狀態暫時無法取得';
+        render(null, 'unavailable');
       }
     }
   };
